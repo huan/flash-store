@@ -11,8 +11,8 @@
     "dist:es6to5": "tsc --out ./bundles/flash-store.umd.js --target es5 --allowJs bundles/flash-store.es6.umd.js --lib es6,dom",
     "lint": "tslint --project tsconfig.json && npm run clean && tsc --noEmit",
     "rollup": "rollup -c",
-    "test": "npm run test:unit",
-    "test:npm": "export TMPDIR=/tmp/flash-store-npm.$$ && mkdir $TMPDIR && npm pack && mv flash-store-*.*.*.tgz $TMPDIR && cp tests/fixtures/smoke-testing.js $TMPDIR && cd $TMPDIR && npm init -y && npm install flash-store-*.*.*.tgz && node smoke-testing.js",
+    "test": "npm run lint && npm run test:unit",
+    "test:npm": "npm run dist && export TMPDIR=/tmp/flash-store-npm.$$ && mkdir $TMPDIR && npm pack && mv flash-store-*.*.*.tgz $TMPDIR && cp tests/fixtures/smoke-testing.js $TMPDIR && cd $TMPDIR && npm init -y && npm install flash-store-*.*.*.tgz && node smoke-testing.js",
     "test:unit": "tape -r ts-node/register \"src/**/*.spec.ts\" \"tests/**/*.spec.ts\""
   },
   "repository": {
