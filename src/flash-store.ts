@@ -5,16 +5,17 @@ import * as path  from 'path'
 
 import appRoot      from 'app-root-path'
 import { log }      from 'brolog'
-import * as rimraf  from 'rimraf'
 
 // https://github.com/rollup/rollup/issues/1267#issuecomment-296395734
+import * as rimrafProxy     from 'rimraf'
 import * as encodingProxy   from 'encoding-down'
 import * as leveldownProxy  from 'leveldown'
 import * as levelupProxy    from 'levelup'
 
-const encoding  = (<any>encodingProxy).default || encodingProxy
+const rimraf    = (<any>rimrafProxy).default    || rimrafProxy
+const encoding  = (<any>encodingProxy).default  || encodingProxy
 const leveldown = (<any>leveldownProxy).default || leveldownProxy
-const levelup   = (<any>levelupProxy).default || levelupProxy
+const levelup   = (<any>levelupProxy).default   || levelupProxy
 
 export class FlashStore<K, V> {
   private levelDb: levelupProxy.LevelUp<
