@@ -1,4 +1,7 @@
 # FLASH-STORE
+
+[![Build Status](https://travis-ci.org/zixia/flash-store.svg?branch=master)](https://travis-ci.org/zixia/flash-store)
+
 Flash Store is a Key-Value Storage Library for Node.js
 
 ![flash store](https://zixia.github.io/flash-store/images/flash-store.png)
