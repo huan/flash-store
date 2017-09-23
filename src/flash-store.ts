@@ -2,7 +2,6 @@
 (<any>Symbol).asyncIterator = Symbol.asyncIterator || Symbol.for('Symbol.asyncIterator')
 
 import * as path  from 'path'
-import * as util  from 'util'
 
 import appRoot      from 'app-root-path'
 import { log }      from 'brolog'
@@ -146,7 +145,7 @@ export class FlashStore<K, V> {
   public async destroy(): Promise<void> {
     log.verbose('FlashStore', 'destroy()')
     await this.levelDb.close()
-    await util.promisify(rimraf)(this.workDir)
+    await new Promise(resolve => rimraf(this.workDir, resolve))
   }
 }
 
