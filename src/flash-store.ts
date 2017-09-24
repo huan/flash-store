@@ -45,7 +45,7 @@ export class FlashStore<K, V> {
   }
 
   public async put(key: K, value: V): Promise<void> {
-    log.verbose('FlashStore', 'put(%s, %s(%s))', key, value, typeof value)
+    log.verbose('FlashStore', 'put(%s, %s) value type: %s', key, value, typeof value)
     // FIXME: issue #2
     return await this.levelDb.put(key, JSON.stringify(value) as any)
   }
