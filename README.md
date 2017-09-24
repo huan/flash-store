@@ -16,3 +16,19 @@ SEE ALSO
 1. [How to Cook a Graph Database in a Night - LevelGraph](http://nodejsconfit.levelgraph.io/)
 1. [Graph database JS style for Node.js and the Browser. Built upon LevelUp and LevelDB.](https://github.com/levelgraph/levelgraph)
 
+AUTHOR
+------
+
+Huan LI \<zixia@zixia.net\> (http://linkedin.com/in/zixia)
+
+<a href="http://stackoverflow.com/users/1123955/zixia">
+  <img src="http://stackoverflow.com/users/flair/1123955.png" width="208" height="58" alt="profile for zixia at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for zixia at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
+</a>
+
+COPYRIGHT & LICENSE
+-------------------
+
+* Code & Docs © 2017 Huan LI \<zixia@zixia.net\>
+* Code released under the Apache-2.0 License
+* Docs released under Creative Commons
+
