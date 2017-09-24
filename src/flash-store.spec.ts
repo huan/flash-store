@@ -79,7 +79,6 @@ test('get()', async t => {
     for await (const store of storeFixture()) {
       await store.put(KEY, VAL_OBJ)
       const val = await store.get(KEY)
-      console.log(typeof val)
       t.deepEqual(val, VAL_OBJ, 'should get VAL_OBJ after set KEY')
     }
   })
