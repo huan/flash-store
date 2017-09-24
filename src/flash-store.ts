@@ -6,12 +6,12 @@ import * as path  from 'path'
 import appRoot      from 'app-root-path'
 import { log }      from 'brolog'
 
-// https://github.com/rollup/rollup/issues/1267#issuecomment-296395734
 import * as rimrafProxy     from 'rimraf'
 import * as encodingProxy   from 'encoding-down'
 import * as leveldownProxy  from 'leveldown'
 import * as levelupProxy    from 'levelup'
 
+// https://github.com/rollup/rollup/issues/1267#issuecomment-296395734
 const rimraf    = (<any>rimrafProxy).default    || rimrafProxy
 const encoding  = (<any>encodingProxy).default  || encodingProxy
 const leveldown = (<any>leveldownProxy).default || leveldownProxy
@@ -33,20 +33,28 @@ export class FlashStore<K, V> {
     // https://twitter.com/juliangruber/status/908688876381892608
     const encoded = encoding(
       leveldown(workDir),
+      {
+        // FIXME: issue #2
+        valueEncoding: 'json',
+      },
     )
+
     this.levelDb = levelup(encoded)
+    // console.log((this.levelDb as any)._db.codec)
     this.levelDb.setMaxListeners(17)  // default is Infinity
   }
 
   public async put(key: K, value: V): Promise<void> {
-    log.verbose('FlashStore', 'put(%s, %s)', key, value)
-    return await this.levelDb.put(key, value)
+    log.verbose('FlashStore', 'put(%s, %s(%s))', key, value, typeof value)
+    // FIXME: issue #2
+    return await this.levelDb.put(key, JSON.stringify(value) as any)
   }
 
   public async get(key: K): Promise<V | null> {
     log.verbose('FlashStore', 'get(%s)', key)
     try {
-      return await this.levelDb.get(key)
+      // FIXME: issue #2
+      return JSON.parse(await this.levelDb.get(key) as any)
     } catch (e) {
       if (/^NotFoundError/.test(e)) {
         return null
@@ -99,9 +107,10 @@ export class FlashStore<K, V> {
             reject(err)
           }
           if (!key && !val) {
-            resolve(null)
+            return resolve(null)
           }
-          resolve([key, val])
+          // FIXME: issue #2
+          return resolve([key, JSON.parse(val as any)])
         })
       })
       if (!pair) {

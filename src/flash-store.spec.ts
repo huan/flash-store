@@ -11,8 +11,9 @@ import * as test from 'blue-tape'
 
 import { FlashStore }  from './flash-store'
 
-const KEY = 'test-key'
-const VAL = 'test-val'
+const KEY     = 'test-key'
+const VAL     = 'test-val'
+const VAL_OBJ = { obj_key: 'obj_val' }
 
 test('constructor()', async t => {
   const tmpDir = path.join(
@@ -59,14 +60,29 @@ test('Store as iterator', async t => {
 })
 
 test('get()', async t => {
-  for await (const store of storeFixture()) {
-    let val = await store.get(KEY)
-    t.equal(val, null, 'should get null for not exist key')
+  t.test('return null for non existing key', async t => {
+    for await (const store of storeFixture()) {
+      const val = await store.get(KEY)
+      t.equal(val, null, 'should get null for not exist key')
+    }
+  })
 
-    await store.put(KEY, VAL)
-    val = await store.get(KEY)
-    t.equal(val, VAL, 'should get VAL after set KEY')
-  }
+  t.test('store string key/val', async t => {
+    for await (const store of storeFixture()) {
+      await store.put(KEY, VAL)
+      const val = await store.get(KEY)
+      t.equal(val, VAL, 'should get VAL after set KEY')
+    }
+  })
+
+  t.test('store object value', async t => {
+    for await (const store of storeFixture()) {
+      await store.put(KEY, VAL_OBJ)
+      const val = await store.get(KEY)
+      console.log(typeof val)
+      t.deepEqual(val, VAL_OBJ, 'should get VAL_OBJ after set KEY')
+    }
+  })
 })
 
 test('put()', async t => {
