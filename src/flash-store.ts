@@ -24,6 +24,8 @@ export interface IteratorOptions {
   lte?     : any,
   reverse? : boolean,
   limit?   : number,
+
+  prefix?  : any,
 }
 
 export class FlashStore<K, V> {
@@ -79,6 +81,14 @@ export class FlashStore<K, V> {
     //   keys   : true,
     //   values : false,
     // })
+
+    if (options.prefix) {
+      if (options.gte || options.lte) {
+        throw new Error('can not specify `prefix` with `gte`/`lte` together.')
+      }
+      options.gte = options.prefix
+      options.lte = options.prefix + '\xff'
+    }
 
     for await (const [key, _] of this.iterator(options)) {
       yield key
