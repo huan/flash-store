@@ -3,7 +3,9 @@
 
 import * as path  from 'path'
 
-import appRoot      from 'app-root-path'
+import {
+  path as appRoot,
+}                   from 'app-root-path'
 import { log }      from 'brolog'
 
 import * as rimrafProxy     from 'rimraf'
@@ -32,7 +34,7 @@ export class FlashStore<K, V> {
   private levelDb: any
 
   constructor(
-    public workdir = path.join(appRoot.path, 'flash-store.workdir'),
+    public workdir = path.join(appRoot, 'flash-store.workdir'),
   ) {
     log.verbose('FlashStore', 'constructor()')
 
