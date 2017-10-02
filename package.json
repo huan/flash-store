@@ -13,7 +13,7 @@
     "rollup": "rollup -c",
     "test": "npm run lint && npm run test:unit",
     "test:npm": "npm run dist && export TMPDIR=/tmp/flash-store-npm.$$ && mkdir $TMPDIR && npm pack && mv flash-store-*.*.*.tgz $TMPDIR && cp tests/fixtures/smoke-testing.js $TMPDIR && cd $TMPDIR && npm init -y && npm install flash-store-*.*.*.tgz && node smoke-testing.js",
-    "test:unit": "tape -r ts-node/register \"src/**/*.spec.ts\" \"tests/**/*.spec.ts\""
+    "test:unit": "blue-tape -r ts-node/register -r source-map-support/register \"src/**/*.spec.ts\" \"tests/**/*.spec.ts\""
   },
   "repository": {
     "type": "git",
@@ -33,9 +33,9 @@
   "dependencies": {
     "app-root-path": "^2.0.1",
     "brolog": "^1.2.6",
-    "encoding-down": "^2.3.0",
-    "leveldown": "^1.8.0",
-    "levelup": "^2.0.0-rc3",
+    "encoding-down": "^2.3.1",
+    "leveldown": "^2.0.0",
+    "levelup": "2.0.0-rc2",
     "rimraf": "^2.6.2"
   },
   "devDependencies": {
@@ -50,6 +50,7 @@
     "shx": "^0.2.2",
     "sinon": "^3.3.0",
     "sinon-test": "^2.1.1",
+    "source-map-support": "^0.4.18",
     "ts-node": "^3.3.0",
     "tslint": "^5.7.0",
     "typescript": "^2.5.2"
