@@ -17,22 +17,26 @@ const encoding  = (<any>encodingProxy).default  || encodingProxy
 const leveldown = (<any>leveldownProxy).default || leveldownProxy
 const levelup   = (<any>levelupProxy).default   || levelupProxy
 
+export interface IteratorOptions {
+  gt?      : any,
+  gte?     : any,
+  lt?      : any,
+  lte?     : any,
+  reverse? : boolean,
+  limit?   : number,
+}
+
 export class FlashStore<K, V> {
-  private levelDb: levelupProxy.LevelUp<
-    K,
-    V,
-    leveldownProxy.LevelDownOptions,
-    any, any, any, any, any
-  >
+  private levelDb: any
 
   constructor(
-    public workDir = path.join(appRoot.path, 'flash.store'),
+    public workdir = path.join(appRoot.path, 'flash-store.workdir'),
   ) {
     log.verbose('FlashStore', 'constructor()')
 
     // https://twitter.com/juliangruber/status/908688876381892608
     const encoded = encoding(
-      leveldown(workDir),
+      leveldown(workdir),
       {
         // FIXME: issue #2
         valueEncoding: 'json',
@@ -68,18 +72,28 @@ export class FlashStore<K, V> {
     return this.levelDb.del(key)
   }
 
-  public async* keys(): AsyncIterableIterator<K> {
+  public async* keys(options: IteratorOptions = {}): AsyncIterableIterator<K> {
     log.verbose('FlashStore', 'keys()')
 
-    for await (const [key, _] of this) {
+    // options = Object.assign(options, {
+    //   keys   : true,
+    //   values : false,
+    // })
+
+    for await (const [key, _] of this.iterator(options)) {
       yield key
     }
   }
 
-  public async* values(): AsyncIterableIterator<V> {
+  public async* values(options: IteratorOptions = {}): AsyncIterableIterator<V> {
     log.verbose('FlashStore', 'values()')
 
-    for await (const [_, value] of this) {
+    // options = Object.assign(options, {
+    //   keys   : false,
+    //   values : true,
+    // })
+
+    for await (const [_, value] of this.iterator(options)) {
       yield value
     }
 
@@ -95,10 +109,10 @@ export class FlashStore<K, V> {
     return count
   }
 
-  public async *[Symbol.asyncIterator](): AsyncIterator<[K, V]> {
-    log.verbose('FlashStore', '*[Symbol.asyncIterator]()')
+  public async *iterator(options?: IteratorOptions): AsyncIterableIterator<[K, V]> {
+    log.verbose('FlashStore', '*iterator()')
 
-    const iterator = (this.levelDb as any).db.iterator()
+    const iterator = (this.levelDb as any).db.iterator(options)
 
     while (true) {
       const pair = await new Promise<[K, V] | null>((resolve, reject) => {
@@ -109,8 +123,11 @@ export class FlashStore<K, V> {
           if (!key && !val) {
             return resolve(null)
           }
-          // FIXME: issue #2
-          return resolve([key, JSON.parse(val as any)])
+          if (val) {
+            // FIXME: issue #2
+            val = JSON.parse(val as any)
+          }
+          return resolve([key, val])
         })
       })
       if (!pair) {
@@ -118,7 +135,11 @@ export class FlashStore<K, V> {
       }
       yield pair
     }
+  }
 
+  public async *[Symbol.asyncIterator](): AsyncIterator<[K, V]> {
+    log.verbose('FlashStore', '*[Symbol.asyncIterator]()')
+    yield* this.iterator()
   }
 
   public async *streamAsyncIterator(): AsyncIterator<[K, V]> {
@@ -155,7 +176,7 @@ export class FlashStore<K, V> {
   public async destroy(): Promise<void> {
     log.verbose('FlashStore', 'destroy()')
     await this.levelDb.close()
-    await new Promise(resolve => rimraf(this.workDir, resolve))
+    await new Promise(resolve => rimraf(this.workdir, resolve))
   }
 }
 

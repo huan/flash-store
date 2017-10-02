@@ -111,7 +111,6 @@ test('keys()', async t => {
     t.equal(count, 0, 'should get 0 key after init')
 
     await store.put(KEY, VAL)
-
     for await (const key of store.keys()) {
       t.equal(key, KEY, 'should get back the key')
       count++
