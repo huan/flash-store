@@ -1,6 +1,6 @@
 {
   "name": "flash-store",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "description": "Flash Store is an Easy to Use Key-Value Storage Library for Node.js Writen in TypeScript Edit",
   "main": "bundles/flash-store.umd.js",
   "types": "dist/flash-store.d.ts",
