@@ -137,6 +137,24 @@ test('values()', async t => {
   }
 })
 
+test('deferred-leveldown json bug(fixed on version 2.0.2', async t => {
+  const encoding  = (await import('encoding-down')).default
+  const leveldown = (await import('leveldown')).default
+  const levelup   = (await import('levelup')).default
+
+  const encoded = encoding(leveldown('/tmp/test'), {
+    valueEncoding: 'json',
+  })
+  const levelDb = levelup(encoded)
+
+  const EXPECTED_OBJ = {a: 1}
+  await levelDb.put('test', EXPECTED_OBJ)
+  const value = await levelDb.get('test')
+
+  t.equal(typeof value, 'object', 'value type should be object')
+  t.deepEqual(value, EXPECTED_OBJ, 'should get back the original object')
+})
+
 async function* storeFixture() {
   const tmpDir = fs.mkdtempSync(
     path.join(
