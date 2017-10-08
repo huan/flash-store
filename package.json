@@ -5,7 +5,7 @@
   "main": "bundles/flash-store.umd.js",
   "types": "dist/flash-store.d.ts",
   "scripts": {
-    "build": "tsc --module es6",
+    "build": "tsc --module esnext",
     "clean": "shx rm -fr dist/* bundles/*",
     "dist": "npm run clean && npm run build && npm run rollup && npm run dist:es6to5",
     "dist:es6to5": "tsc --out ./bundles/flash-store.umd.js --target es5 --allowJs bundles/flash-store.es6.umd.js --lib es6,dom",
