@@ -63,10 +63,10 @@ export class FlashStore<K, V> {
 
   /**
    * Put data in database
-   * 
-   * @param {K} key 
-   * @param {V} value 
-   * @returns {Promise<void>} 
+   *
+   * @param {K} key
+   * @param {V} value
+   * @returns {Promise<void>}
    * @example
    * await flashStore.put(1, 1)
    */
@@ -78,9 +78,9 @@ export class FlashStore<K, V> {
 
   /**
    * Get value from database by key
-   * 
-   * @param {K} key 
-   * @returns {(Promise<V | null>)} 
+   *
+   * @param {K} key
+   * @returns {(Promise<V | null>)}
    * @example
    * console.log(await flashStore.get(1))
    */
@@ -99,9 +99,9 @@ export class FlashStore<K, V> {
 
   /**
    * Del data by key
-   * 
-   * @param {K} key 
-   * @returns {Promise<void>} 
+   *
+   * @param {K} key
+   * @returns {Promise<void>}
    * @example
    * await flashStore.del(1)
    */
@@ -112,7 +112,7 @@ export class FlashStore<K, V> {
 
   /**
    * @typedef IteratorOptions
-   * 
+   *
    * @property { any }      gt       - Matches values that are greater than a specified value
    * @property { any }      gte      - Matches values that are greater than or equal to a specified value.
    * @property { any }      lt       - Matches values that are less than a specified value.
@@ -124,9 +124,9 @@ export class FlashStore<K, V> {
 
   /**
    * Find keys by IteratorOptions
-   * 
-   * @param {IteratorOptions} [options={}] 
-   * @returns {AsyncIterableIterator<K>} 
+   *
+   * @param {IteratorOptions} [options={}]
+   * @returns {AsyncIterableIterator<K>}
    * @example
    * const flashStore = new FlashStore('falshstore.workdir')
    * for await(const key of flashStore.keys({gte: 1})) {
@@ -157,7 +157,7 @@ export class FlashStore<K, V> {
   /**
    * Find all values
    *
-   * @returns {AsyncIterableIterator<V>} 
+   * @returns {AsyncIterableIterator<V>}
    * @example
    * const flashStore = new FlashStore('falshstore.workdir')
    * for await(const value of flashStore.values()) {
@@ -180,8 +180,8 @@ export class FlashStore<K, V> {
 
   /**
    * Get the counts of the database
-   * 
-   * @returns {Promise<number>} 
+   *
+   * @returns {Promise<number>}
    * @example
    * const count = await flashStore.count()
    * console.log(`database count: ${count}`)
@@ -271,8 +271,8 @@ export class FlashStore<K, V> {
 
   /**
    * Destroy the database
-   * 
-   * @returns {Promise<void>} 
+   *
+   * @returns {Promise<void>}
    */
   public async destroy(): Promise<void> {
     log.verbose('FlashStore', 'destroy()')
