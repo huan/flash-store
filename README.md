@@ -13,7 +13,7 @@ EXAMPLE
 --------
 try the following command
 ```shell
-npm install flash-store
+npm install
 npm run demo
 ```
 

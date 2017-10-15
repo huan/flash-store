@@ -36,12 +36,12 @@
     "app-root-path": "^2.0.1",
     "brolog": "^1.2.6",
     "encoding-down": "^2.3.1",
-    "jsdoc-to-markdown": "^3.0.0",
     "leveldown": "^2.0.0",
     "levelup": "github:MeirionHughes/levelup",
     "rimraf": "^2.6.2"
   },
   "devDependencies": {
+    "jsdoc-to-markdown": "^3.0.0",
     "@types/app-root-path": "^1.2.4",
     "@types/blue-tape": "^0.1.31",
     "@types/node": "^8.0.30",
