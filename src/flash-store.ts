@@ -35,9 +35,9 @@ export class FlashStore<K, V> {
 
   /**
    * FlashStore is a Key-Value database tool and makes using leveldb more easy for Node.js
-   * 
+   *
    * Creates an instance of FlashStore.
-   * @param {string} [workdir=path.join(appRoot, 'flash-store.workdir')] 
+   * @param {string} [workdir=path.join(appRoot, 'flash-store.workdir')]
    * @example
    * import { FlashStore } from 'flash-store'
    * const flashStore = new FlashStore('falshstore.workdir')
