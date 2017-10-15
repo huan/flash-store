@@ -7,7 +7,8 @@
   "scripts": {
     "build": "tsc --module esnext",
     "clean": "shx rm -fr dist/* bundles/*",
-    "doc": "npm run dist && echo '# FlashStore v'$(jq -r .version package.json)' Documentation\n' > docs/index.md && jsdoc2md dist/src/flash-store.js>> docs/index.md",
+    "doc": "npm run dist && echo '# FlashStore v'$(jq -r .version package.json)' Documentation\n' > docs/index.md && jsdoc2md dist/flash-store.js>> docs/index.md",
+    "demo": "ts-node example/demo.ts",
     "dist": "npm run clean && npm run build && npm run rollup && npm run dist:es6to5",
     "dist:es6to5": "tsc --out ./bundles/flash-store.umd.js --target es5 --allowJs bundles/flash-store.es6.umd.js --lib es6,dom",
     "lint": "tslint --project tsconfig.json && npm run clean && tsc --noEmit",
@@ -35,6 +36,7 @@
     "app-root-path": "^2.0.1",
     "brolog": "^1.2.6",
     "encoding-down": "^2.3.1",
+    "jsdoc-to-markdown": "^3.0.0",
     "leveldown": "^2.0.0",
     "levelup": "github:MeirionHughes/levelup",
     "rimraf": "^2.6.2"
