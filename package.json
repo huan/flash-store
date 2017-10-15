@@ -7,6 +7,7 @@
   "scripts": {
     "build": "tsc --module esnext",
     "clean": "shx rm -fr dist/* bundles/*",
+    "doc": "npm run dist && echo '# FlashStore v'$(jq -r .version package.json)' Documentation\n' > docs/index.md && jsdoc2md dist/src/flash-store.js>> docs/index.md",
     "dist": "npm run clean && npm run build && npm run rollup && npm run dist:es6to5",
     "dist:es6to5": "tsc --out ./bundles/flash-store.umd.js --target es5 --allowJs bundles/flash-store.es6.umd.js --lib es6,dom",
     "lint": "tslint --project tsconfig.json && npm run clean && tsc --noEmit",
