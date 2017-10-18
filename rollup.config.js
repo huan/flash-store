@@ -5,5 +5,5 @@ export default {
   format: 'umd',
   moduleName: 'window',
   banner: '/* flash-store version ' + require('./package.json').version + ' */',
-  footer: '/* https://git.io/zixia/ */'
+  footer: '/* https://github.com/zixia */'
 }

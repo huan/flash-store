@@ -3,11 +3,34 @@ FLASH-STORE
 
 [![Powered by LevelDB](https://img.shields.io/badge/Powered%20By-LevelDB-green.svg)](https://leveldb.org/) [![Powered by TypeScript](https://img.shields.io/badge/Powered%20By-TypeScript-blue.svg)](https://www.typescriptlang.org/) 
 
-[![Build Status](https://travis-ci.org/zixia/flash-store.svg?branch=master)](https://travis-ci.org/zixia/flash-store) [![NPM Version](https://badge.fury.io/js/flash-store.svg)](https://badge.fury.io/js/flash-store) [![Downloads](http://img.shields.io/npm/dm/flash-store.svg?style=flat-square)](https://npmjs.org/package/flash-store) [![node](https://img.shields.io/node/v/facenet.svg?maxAge=604800)](https://nodejs.org/)
+[![Build Status](https://travis-ci.org/zixia/flash-store.svg?branch=master)](https://travis-ci.org/zixia/flash-store) [![NPM Version](https://badge.fury.io/js/flash-store.svg)](https://badge.fury.io/js/flash-store) [![Downloads](http://img.shields.io/npm/dm/flash-store.svg?style=flat-square)](https://npmjs.org/package/flash-store) [![node](https://img.shields.io/node/v/flash-store.svg?maxAge=604800)](https://nodejs.org/)
 
 FlashStore is a Key-Value database tool and makes using leveldb more easy for Node.js
 
 ![flash store](https://zixia.github.io/flash-store/images/flash-store.png)
+
+EXAMPLE
+--------
+try the following command
+```shell
+npm install
+npm run demo
+```
+
+The basic function as follows:
+```ts
+import { FlashStore } from 'flash-store'
+const flashStore = new FlashStore('falshstore.workdir')
+await flashStore.put(1, 'a')
+console.log(`key: 1, value: ${await flashStore.get(1)}`)
+await flashStore.del(1)
+console.log(`key: 1, value: ${await flashStore.get(1)}`)
+```
+
+DOCUMENT
+-------------
+
+See [auto generated docs](https://zixia.github.io/flash-store)
 
 SEE ALSO
 --------
