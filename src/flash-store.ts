@@ -1,5 +1,7 @@
 // https://github.com/Microsoft/TypeScript/issues/14151#issuecomment-280812617
-(<any>Symbol).asyncIterator = Symbol.asyncIterator || Symbol.for('Symbol.asyncIterator')
+if (!Symbol.asyncIterator) {
+  (<any>Symbol).asyncIterator =  Symbol.for('Symbol.asyncIterator')
+}
 
 import * as path  from 'path'
 
@@ -37,6 +39,15 @@ export interface IteratorOptions {
 export class FlashStore<K, V> {
   private levelDb: any
 
+  /**
+   * FlashStore is a Key-Value database tool and makes using leveldb more easy for Node.js
+   *
+   * Creates an instance of FlashStore.
+   * @param {string} [workdir=path.join(appRoot, 'flash-store.workdir')]
+   * @example
+   * import { FlashStore } from 'flash-store'
+   * const flashStore = new FlashStore('falshstore.workdir')
+   */
   constructor(
     public workdir = path.join(appRoot, 'flash-store.workdir'),
   ) {
@@ -60,12 +71,29 @@ export class FlashStore<K, V> {
     return VERSION
   }
 
+  /**
+   * Put data in database
+   *
+   * @param {K} key
+   * @param {V} value
+   * @returns {Promise<void>}
+   * @example
+   * await flashStore.put(1, 1)
+   */
   public async put(key: K, value: V): Promise<void> {
     log.verbose('FlashStore', 'put(%s, %s) value type: %s', key, value, typeof value)
     // FIXME: issue #2
     return await this.levelDb.put(key, JSON.stringify(value) as any)
   }
 
+  /**
+   * Get value from database by key
+   *
+   * @param {K} key
+   * @returns {(Promise<V | null>)}
+   * @example
+   * console.log(await flashStore.get(1))
+   */
   public async get(key: K): Promise<V | null> {
     log.verbose('FlashStore', 'get(%s)', key)
     try {
@@ -79,11 +107,42 @@ export class FlashStore<K, V> {
     }
   }
 
+  /**
+   * Del data by key
+   *
+   * @param {K} key
+   * @returns {Promise<void>}
+   * @example
+   * await flashStore.del(1)
+   */
   public del(key: K): Promise<void> {
     log.verbose('FlashStore', 'del(%s)', key)
     return this.levelDb.del(key)
   }
 
+  /**
+   * @typedef IteratorOptions
+   *
+   * @property { any }      gt       - Matches values that are greater than a specified value
+   * @property { any }      gte      - Matches values that are greater than or equal to a specified value.
+   * @property { any }      lt       - Matches values that are less than a specified value.
+   * @property { any }      lte      - Matches values that are less than or equal to a specified value.
+   * @property { boolean }  reverse  - Reverse the result set
+   * @property { number }   limit    - Limits the number in the result set.
+   * @property { any }      prefix   - Make the same prefix key get together.
+   */
+
+  /**
+   * Find keys by IteratorOptions
+   *
+   * @param {IteratorOptions} [options={}]
+   * @returns {AsyncIterableIterator<K>}
+   * @example
+   * const flashStore = new FlashStore('falshstore.workdir')
+   * for await(const key of flashStore.keys({gte: 1})) {
+   *   console.log(key)
+   * }
+   */
   public async* keys(options: IteratorOptions = {}): AsyncIterableIterator<K> {
     log.verbose('FlashStore', 'keys()')
 
@@ -105,6 +164,16 @@ export class FlashStore<K, V> {
     }
   }
 
+  /**
+   * Find all values
+   *
+   * @returns {AsyncIterableIterator<V>}
+   * @example
+   * const flashStore = new FlashStore('falshstore.workdir')
+   * for await(const value of flashStore.values()) {
+   *   console.log(value)
+   * }
+   */
   public async* values(options: IteratorOptions = {}): AsyncIterableIterator<V> {
     log.verbose('FlashStore', 'values()')
 
@@ -119,6 +188,14 @@ export class FlashStore<K, V> {
 
   }
 
+  /**
+   * Get the counts of the database
+   *
+   * @returns {Promise<number>}
+   * @example
+   * const count = await flashStore.count()
+   * console.log(`database count: ${count}`)
+   */
   public async count(): Promise<number> {
     log.verbose('FlashStore', 'count()')
 
@@ -129,6 +206,9 @@ export class FlashStore<K, V> {
     return count
   }
 
+  /**
+   * @private
+   */
   public async *iterator(options?: IteratorOptions): AsyncIterableIterator<[K, V]> {
     log.verbose('FlashStore', '*iterator()')
 
@@ -157,11 +237,17 @@ export class FlashStore<K, V> {
     }
   }
 
+  /**
+   * @private
+   */
   public async *[Symbol.asyncIterator](): AsyncIterator<[K, V]> {
     log.verbose('FlashStore', '*[Symbol.asyncIterator]()')
     yield* this.iterator()
   }
 
+  /**
+   * @private
+   */
   public async *streamAsyncIterator(): AsyncIterator<[K, V]> {
     log.warn('FlashStore', 'DEPRECATED *[Symbol.asyncIterator]()')
 
@@ -193,6 +279,11 @@ export class FlashStore<K, V> {
 
   }
 
+  /**
+   * Destroy the database
+   *
+   * @returns {Promise<void>}
+   */
   public async destroy(): Promise<void> {
     log.verbose('FlashStore', 'destroy()')
     await this.levelDb.close()

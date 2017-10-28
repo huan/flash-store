@@ -9,6 +9,29 @@ FlashStore is a Key-Value database tool and makes using leveldb more easy for No
 
 ![flash store](https://zixia.github.io/flash-store/images/flash-store.png)
 
+EXAMPLE
+--------
+try the following command
+```shell
+npm install
+npm run demo
+```
+
+The basic function as follows:
+```ts
+import { FlashStore } from 'flash-store'
+const flashStore = new FlashStore('falshstore.workdir')
+await flashStore.put(1, 'a')
+console.log(`key: 1, value: ${await flashStore.get(1)}`)
+await flashStore.del(1)
+console.log(`key: 1, value: ${await flashStore.get(1)}`)
+```
+
+DOCUMENT
+-------------
+
+See [auto generated docs](https://zixia.github.io/flash-store)
+
 SEE ALSO
 --------
 
