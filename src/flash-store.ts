@@ -6,7 +6,6 @@ import * as path  from 'path'
 import {
   path as appRoot,
 }                   from 'app-root-path'
-import { log }      from 'brolog'
 
 import * as rimrafProxy     from 'rimraf'
 import * as encodingProxy   from 'encoding-down'
@@ -18,6 +17,11 @@ const rimraf    = (<any>rimrafProxy).default    || rimrafProxy
 const encoding  = (<any>encodingProxy).default  || encodingProxy
 const leveldown = (<any>leveldownProxy).default || leveldownProxy
 const levelup   = (<any>levelupProxy).default   || levelupProxy
+
+import {
+  log,
+  VERSION,
+}             from       './config'
 
 export interface IteratorOptions {
   gt?      : any,
@@ -50,6 +54,10 @@ export class FlashStore<K, V> {
     this.levelDb = levelup(encoded)
     // console.log((this.levelDb as any)._db.codec)
     this.levelDb.setMaxListeners(17)  // default is Infinity
+  }
+
+  public version(): string {
+    return VERSION
   }
 
   public async put(key: K, value: V): Promise<void> {
