@@ -28,8 +28,7 @@
     , "sourceMap": true
   }
   , "include": [
-      "src/**/*.ts"
-    , "typings.d.ts"
+    "src/**/*.ts"
   ]
   , "exclude": [
       "dist"

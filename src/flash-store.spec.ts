@@ -9,7 +9,9 @@ import * as test from 'blue-tape'
 // import { log }    from './config'
 // log.level('silly')
 
-import { FlashStore }  from './flash-store'
+import {
+  FlashStore,
+}  from './flash-store'
 
 const KEY     = 'test-key'
 const VAL     = 'test-val'
@@ -27,8 +29,14 @@ test('constructor()', async t => {
     await store.del('init')
 
     t.ok(fs.existsSync(tmpDir), 'should create the workDir')
-    store.destroy()
+    await store.destroy()
   }, 'should not throw exception with a non existing workDir')
+})
+
+test('version()', async t => {
+  for await (const store of storeFixture()) {
+    t.ok(store.version().match(/^\d+\.\d+\.\d+$/), 'should get semver version')
+  }
 })
 
 test('Store as iterator', async t => {
