@@ -11,6 +11,17 @@ cache:
   directories:
     - node_modules
 
+script:
+  - echo $TRAVIS_OS_NAME
+  - node --version
+  - npm --version
+  - echo "Testing started ..."
+  - npm test || travis_terminate 1
+
+after_success:
+  - if [ "$TRAVIS_OS_NAME" == 'osx' ]; then npm run coverage; fi
+
+
 stages:
   - test
   - pack
@@ -19,17 +30,6 @@ stages:
 
 jobs:
   include:
-    - stage: test
-      script:
-        - echo $TRAVIS_OS_NAME
-        - node --version
-        - npm --version
-        - echo "Testing started ..."
-        - npm test || travis_terminate 1
-
-      after_success:
-        - if [ "$TRAVIS_OS_NAME" == 'osx' ]; then npm run coverage; fi
-
     - stage: pack
       script:
         - npm run test:pack && echo 'Npm pack testing is passed' || travis_terminate 1
