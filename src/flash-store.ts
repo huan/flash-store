@@ -37,7 +37,7 @@ export interface IteratorOptions {
 }
 
 export interface AsyncMap<K = any, V = any> {
-  [Symbol.asyncIterator](): AsyncIterator<[K, V]>
+  [Symbol.asyncIterator](): AsyncIterableIterator<[K, V]>
 
   clear   ()                 : Promise<void>
   delete  (key: K)           : Promise<void>
@@ -290,7 +290,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
     }
   }
 
-  public async *[Symbol.asyncIterator](): AsyncIterator<[K, V]> {
+  public async *[Symbol.asyncIterator](): AsyncIterableIterator<[K, V]> {
     log.verbose('FlashStore', '*[Symbol.asyncIterator]()')
     yield* this.entries()
   }
