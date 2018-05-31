@@ -1,6 +1,6 @@
 {
   "name": "flash-store",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "An Easy to Use Key-Value DB built on top of LevelDB",
   "main": "bundles/flash-store.umd.js",
   "types": "dist/flash-store.d.ts",
