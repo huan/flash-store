@@ -36,19 +36,18 @@ export interface IteratorOptions {
   prefix?  : any,
 }
 
-export interface FlashStore<K = any, V = any> {
-  [Symbol.iterator](): IterableIterator<[K, V]>
+export interface AsyncMap<K = any, V = any> {
+  [Symbol.asyncIterator](): AsyncIterator<[K, V]>
 
-  entries(): AsyncIterableIterator<[K, V]>
-  keys(): AsyncIterableIterator<K>
-  values(): AsyncIterableIterator<V>
-  delete(key: K): Promise<void>
-  set(key: K, value: V): Promise<void>
-  get(key: K): Promise<V | undefined>
-  size(): Promise<number>
-  has(key: K): Promise<boolean>
-
-  clear(): Promise<void>
+  clear   ()                 : Promise<void>
+  delete  (key: K)           : Promise<void>
+  entries()                  : AsyncIterableIterator<[K, V]>
+  get     (key: K)           : Promise<V | undefined>
+  has     (key: K)           : Promise<boolean>
+  keys    ()                 : AsyncIterableIterator<K>
+  set     (key: K, value: V) : Promise<void>
+  size    ()                 : Promise<number>
+  values  ()                 : AsyncIterableIterator<V>
 
   /**
    * The above is ES6 Map like API with async
@@ -58,7 +57,7 @@ export interface FlashStore<K = any, V = any> {
   destroy(): Promise<void>
 }
 
-export class FlashStore<K = any, V = any> {
+export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
   private levelDb: any
 
   /**
@@ -291,9 +290,6 @@ export class FlashStore<K = any, V = any> {
     }
   }
 
-  /**
-   * @private
-   */
   public async *[Symbol.asyncIterator](): AsyncIterator<[K, V]> {
     log.verbose('FlashStore', '*[Symbol.asyncIterator]()')
     yield* this.entries()
