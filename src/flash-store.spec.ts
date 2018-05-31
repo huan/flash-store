@@ -26,7 +26,7 @@ test('constructor()', async t => {
     const store = new FlashStore(tmpDir)
 
     // need to do something to create the db directory
-    await store.del('init')
+    await store.delete('init')
 
     t.ok(fs.existsSync(tmpDir), 'should create the workDir')
     await store.destroy()
@@ -54,7 +54,7 @@ test('Store as iterator', async t => {
 
   t.test('async iterator', async t => {
     for await (const store of storeFixture()) {
-      await store.put(KEY, VAL)
+      await store.set(KEY, VAL)
       let n = 0
       for await (const [key, val] of store) {
         t.equal(key, KEY, 'should get key back')
@@ -71,13 +71,13 @@ test('get()', async t => {
   t.test('return null for non existing key', async t => {
     for await (const store of storeFixture()) {
       const val = await store.get(KEY)
-      t.equal(val, null, 'should get null for not exist key')
+      t.equal(val, undefined, 'should get undefined for not exist key')
     }
   })
 
   t.test('store string key/val', async t => {
     for await (const store of storeFixture()) {
-      await store.put(KEY, VAL)
+      await store.set(KEY, VAL)
       const val = await store.get(KEY)
       t.equal(val, VAL, 'should get VAL after set KEY')
     }
@@ -85,28 +85,28 @@ test('get()', async t => {
 
   t.test('store object value', async t => {
     for await (const store of storeFixture()) {
-      await store.put(KEY, VAL_OBJ)
+      await store.set(KEY, VAL_OBJ)
       const val = await store.get(KEY)
       t.deepEqual(val, VAL_OBJ, 'should get VAL_OBJ after set KEY')
     }
   })
 })
 
-test('put()', async t => {
+test('set()', async t => {
   for await (const store of storeFixture()) {
-    await store.put(KEY, VAL)
+    await store.set(KEY, VAL)
     const val = await store.get(KEY)
-    t.equal(val, VAL, 'should put VAL for KEY')
+    t.equal(val, VAL, 'should set VAL for KEY')
   }
 })
 
-test('count()', async t => {
+test('size()', async t => {
   for await (const store of storeFixture()) {
-    let count = await store.count()
-    t.equal(count, 0, 'should get count 0 after init')
-    await store.put(KEY, VAL)
-    count = await store.count()
-    t.equal(count, 1, 'should get count 1 after put')
+    let size = await store.size()
+    t.equal(size, 0, 'should get size 0 after init')
+    await store.set(KEY, VAL)
+    size = await store.size()
+    t.equal(size, 1, 'should get count 1 after put')
   }
 })
 
@@ -118,7 +118,7 @@ test('keys()', async t => {
     }
     t.equal(count, 0, 'should get 0 key after init')
 
-    await store.put(KEY, VAL)
+    await store.set(KEY, VAL)
     for await (const key of store.keys()) {
       t.equal(key, KEY, 'should get back the key')
       count++
@@ -135,7 +135,7 @@ test('values()', async t => {
     }
     t.equal(count, 0, 'should get 0 value after init')
 
-    await store.put(KEY, VAL)
+    await store.set(KEY, VAL)
 
     for await (const value of store.values()) {
       t.equal(value, VAL, 'should get back the value')

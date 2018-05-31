@@ -36,7 +36,29 @@ export interface IteratorOptions {
   prefix?  : any,
 }
 
-export class FlashStore<K, V> {
+export interface FlashStore<K = any, V = any> {
+  [Symbol.iterator](): IterableIterator<[K, V]>
+
+  entries(): AsyncIterableIterator<[K, V]>
+  keys(): AsyncIterableIterator<K>
+  values(): AsyncIterableIterator<V>
+  delete(key: K): Promise<void>
+  set(key: K, value: V): Promise<void>
+  get(key: K): Promise<V | undefined>
+  size(): Promise<number>
+  has(key: K): Promise<boolean>
+
+  clear(): Promise<void>
+
+  /**
+   * The above is ES6 Map like API with async
+   *
+   * The below is added by Huan
+   */
+  destroy(): Promise<void>
+}
+
+export class FlashStore<K = any, V = any> {
   private levelDb: any
 
   /**
@@ -81,7 +103,12 @@ export class FlashStore<K, V> {
    * await flashStore.put(1, 1)
    */
   public async put(key: K, value: V): Promise<void> {
-    log.verbose('FlashStore', 'put(%s, %s) value type: %s', key, value, typeof value)
+    log.warn('FlashStore', '`put()` DEPRECATED. use `set()` instead.')
+    return this.set(key, value)
+  }
+
+  public async set(key: K, value: V): Promise<void> {
+    log.verbose('FlashStore', 'set(%s, %s) value type: %s', key, value, typeof value)
     // FIXME: issue #2
     return await this.levelDb.put(key, JSON.stringify(value) as any)
   }
@@ -94,14 +121,14 @@ export class FlashStore<K, V> {
    * @example
    * console.log(await flashStore.get(1))
    */
-  public async get(key: K): Promise<V | null> {
+  public async get(key: K): Promise<V | undefined> {
     log.verbose('FlashStore', 'get(%s)', key)
     try {
       // FIXME: issue #2
       return JSON.parse(await this.levelDb.get(key) as any)
     } catch (e) {
       if (/^NotFoundError/.test(e)) {
-        return null
+        return undefined
       }
       throw e
     }
@@ -116,7 +143,12 @@ export class FlashStore<K, V> {
    * await flashStore.del(1)
    */
   public del(key: K): Promise<void> {
-    log.verbose('FlashStore', 'del(%s)', key)
+    log.verbose('FlashStore', '`del()` DEPRECATED. use `delete()` instead')
+    return this.delete(key)
+  }
+
+  public delete(key: K): Promise<void> {
+    log.verbose('FlashStore', 'delete(%s)', key)
     return this.levelDb.del(key)
   }
 
@@ -159,7 +191,7 @@ export class FlashStore<K, V> {
       options.lte = options.prefix + '\xff'
     }
 
-    for await (const [key, _] of this.iterator(options)) {
+    for await (const [key, _] of this.entries(options)) {
       yield key
     }
   }
@@ -182,7 +214,7 @@ export class FlashStore<K, V> {
     //   values : true,
     // })
 
-    for await (const [_, value] of this.iterator(options)) {
+    for await (const [_, value] of this.entries(options)) {
       yield value
     }
 
@@ -197,7 +229,12 @@ export class FlashStore<K, V> {
    * console.log(`database count: ${count}`)
    */
   public async count(): Promise<number> {
-    log.verbose('FlashStore', 'count()')
+    log.warn('FlashStore', '`count()` DEPRECATED. use `size()` instead.')
+    return this.size()
+  }
+
+  public async size(): Promise<number> {
+    log.verbose('FlashStore', 'size()')
 
     let count = 0
     for await (const _ of this) {
@@ -207,10 +244,27 @@ export class FlashStore<K, V> {
   }
 
   /**
+   * FIXME: use better way to do this
+   */
+  public async has(key: K): Promise<boolean> {
+    const val = await this.get(key)
+    return !!val
+  }
+
+  /**
+   * TODO: use better way to do this with leveldb
+   */
+  public async clear(): Promise<void> {
+    for await (const key of this.keys()) {
+      await this.delete(key)
+    }
+  }
+
+  /**
    * @private
    */
-  public async *iterator(options?: IteratorOptions): AsyncIterableIterator<[K, V]> {
-    log.verbose('FlashStore', '*iterator()')
+  public async* entries(options?: IteratorOptions): AsyncIterableIterator<[K, V]> {
+    log.verbose('FlashStore', '*entries(%s)', JSON.stringify(options))
 
     const iterator = (this.levelDb as any).db.iterator(options)
 
@@ -242,7 +296,7 @@ export class FlashStore<K, V> {
    */
   public async *[Symbol.asyncIterator](): AsyncIterator<[K, V]> {
     log.verbose('FlashStore', '*[Symbol.asyncIterator]()')
-    yield* this.iterator()
+    yield* this.entries()
   }
 
   /**
