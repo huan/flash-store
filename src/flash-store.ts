@@ -45,7 +45,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    * @param {string} [workdir=path.join(appRoot, 'flash-store.workdir')]
    * @example
    * import { FlashStore } from 'flash-store'
-   * const flashStore = new FlashStore('falshstore.workdir')
+   * const flashStore = new FlashStore('flashstore.workdir')
    */
   constructor(
     public workdir = path.join(appRoot, '.flash-store'),
@@ -147,7 +147,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    * @param {IteratorOptions} [options={}]
    * @returns {AsyncIterableIterator<K>}
    * @example
-   * const flashStore = new FlashStore('falshstore.workdir')
+   * const flashStore = new FlashStore('flashstore.workdir')
    * for await(const key of flashStore.keys({gte: 1})) {
    *   console.log(key)
    * }
@@ -178,7 +178,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    *
    * @returns {AsyncIterableIterator<V>}
    * @example
-   * const flashStore = new FlashStore('falshstore.workdir')
+   * const flashStore = new FlashStore('flashstore.workdir')
    * for await(const value of flashStore.values()) {
    *   console.log(value)
    * }
@@ -207,17 +207,23 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    */
   public async count(): Promise<number> {
     log.warn('FlashStore', '`count()` DEPRECATED. use `size()` instead.')
-    return this.size()
+    return this.size
   }
 
-  public async size(): Promise<number> {
+  public get size(): Promise<number> {
     log.verbose('FlashStore', 'size()')
 
-    let count = 0
-    for await (const _ of this) {
-      count++
-    }
-    return count
+    return new Promise<number>(async (resolve, reject) => {
+      try {
+        let count = 0
+        for await (const _ of this) {
+          count++
+        }
+        resolve(count)
+      } catch (e) {
+        reject(e)
+      }
+    })
   }
 
   /**

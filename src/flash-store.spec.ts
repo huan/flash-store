@@ -109,10 +109,10 @@ test('async set()', async t => {
 
 test('async size()', async t => {
   for await (const store of storeFixture()) {
-    let size = await store.size()
+    let size = await store.size
     t.equal(size, 0, 'should get size 0 after init')
     await store.set(KEY, VAL)
-    size = await store.size()
+    size = await store.size
     t.equal(size, 1, 'should get count 1 after put')
   }
 })

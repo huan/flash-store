@@ -1,14 +1,17 @@
-import { FlashStore } from '../src/flash-store'
-async function main() {
-  const flashStore = new FlashStore('falshstore.workdir')
-  await flashStore.put(1, 'a')
-  await flashStore.put(2, 'b')
-  await flashStore.put(3, 'c')
+import {
+  FlashStore,
+}             from '../src/'
+
+async function main(): Promise<number> {
+  const flashStore = new FlashStore('flashstore.workdir')
+  await flashStore.set(1, 'a')
+  await flashStore.set(2, 'b')
+  await flashStore.set(3, 'c')
   console.log(`key: 1, value: ${await flashStore.get(1)}`)
   console.log(`key: 2, value: ${await flashStore.get(2)}`)
   console.log(`key: 3, value: ${await flashStore.get(3)}`)
 
-  console.log(`FlashStore data count: ${await flashStore.count()}`)
+  console.log(`FlashStore data count: ${await flashStore.size}`)
 
   console.log('Show all values')
   for await (const value of flashStore.values()) {
@@ -36,8 +39,14 @@ async function main() {
   }
 
   flashStore.destroy()
+  return 0
 }
 
 main()
+.then(process.exit)
+.catch(e => {
+  console.error(e)
+  process.exit(-1)
+})
 
-// flashStore.put('a', 3)
+// flashStore.set('a', 3)

@@ -63,3 +63,4 @@ t.*
 bundles/
 dist/
 .*.swp
+flashstore.workdir/

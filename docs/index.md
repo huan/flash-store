@@ -44,7 +44,7 @@ Creates an instance of FlashStore.
 **Example**  
 ```js
 import { FlashStore } from 'flash-store'
-const flashStore = new FlashStore('falshstore.workdir')
+const flashStore = new FlashStore('flashstore.workdir')
 ```
 <a name="FlashStore+put"></a>
 
@@ -105,7 +105,7 @@ Find keys by IteratorOptions
 
 **Example**  
 ```js
-const flashStore = new FlashStore('falshstore.workdir')
+const flashStore = new FlashStore('flashstore.workdir')
 for await(const key of flashStore.keys({gte: 1})) {
   console.log(key)
 }
@@ -118,7 +118,7 @@ Find all values
 **Kind**: instance method of [<code>FlashStore</code>](#FlashStore)  
 **Example**  
 ```js
-const flashStore = new FlashStore('falshstore.workdir')
+const flashStore = new FlashStore('flashstore.workdir')
 for await(const value of flashStore.values()) {
   console.log(value)
 }

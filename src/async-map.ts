@@ -2,7 +2,8 @@
  * ES6 Map API with Async
  */
 export interface AsyncMap<K = any, V = any> {
-  [Symbol.asyncIterator](): AsyncIterableIterator<[K, V]>
+  [Symbol.asyncIterator]() : AsyncIterableIterator<[K, V]>
+  size                     : Promise<number>
 
   clear   ()                 : Promise<void>
   delete  (key: K)           : Promise<void>
@@ -11,6 +12,5 @@ export interface AsyncMap<K = any, V = any> {
   has     (key: K)           : Promise<boolean>
   keys    ()                 : AsyncIterableIterator<K>
   set     (key: K, value: V) : Promise<void>
-  size    ()                 : Promise<number>
   values  ()                 : AsyncIterableIterator<V>
 }

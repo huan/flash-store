@@ -7,7 +7,7 @@
 [![Downloads](http://img.shields.io/npm/dm/flash-store.svg?style=flat-square)](https://npmjs.org/package/flash-store)
 [![node](https://img.shields.io/node/v/flash-store.svg?maxAge=604800)](https://nodejs.org/)
 
-FlashStore is a Key-Value database tool and makes using leveldb more easy for Node.js
+FlashStore is a Key-Value persistent storage with easy to use ES6 Map-like API(both Async and Sync support), powered by LevelDB and TypeScript.
 
 ![flash store](https://zixia.github.io/flash-store/images/flash-store.png)
 
@@ -24,7 +24,7 @@ The basic function as follows:
 
 ```ts
 import { FlashStore } from 'flash-store'
-const flashStore = new FlashStore('falshstore.workdir')
+const flashStore = new FlashStore('flashstore.workdir')
 await flashStore.put(1, 'a')
 console.log(`key: 1, value: ${await flashStore.get(1)}`)
 await flashStore.del(1)
@@ -42,7 +42,8 @@ FlashStore implments the Standard ES6 Map API with Async modification:
  * ES6 Map API with Async
  */
 export interface AsyncMap<K = any, V = any> {
-  [Symbol.asyncIterator](): AsyncIterableIterator<[K, V]>
+  [Symbol.asyncIterator]() : AsyncIterableIterator<[K, V]>
+  size                     : Promise<number>
 
   clear   ()                 : Promise<void>
   delete  (key: K)           : Promise<void>
@@ -51,7 +52,6 @@ export interface AsyncMap<K = any, V = any> {
   has     (key: K)           : Promise<boolean>
   keys    ()                 : AsyncIterableIterator<K>
   set     (key: K, value: V) : Promise<void>
-  size    ()                 : Promise<number>
   values  ()                 : AsyncIterableIterator<V>
 }
 
