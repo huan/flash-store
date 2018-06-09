@@ -1,6 +1,6 @@
 # FLASH-STORE
 
-[![Powered by LevelDB](https://img.shields.io/badge/Powered%20By-LevelDB-green.svg)](https://leveldb.org/) 
+[![Powered by LevelDB](https://img.shields.io/badge/Powered%20By-LevelDB-green.svg)](https://leveldb.org/)
 [![Powered by TypeScript](https://img.shields.io/badge/Powered%20By-TypeScript-blue.svg)](https://www.typescriptlang.org/)
 [![Build Status](https://travis-ci.com/zixia/flash-store.svg?branch=master)](https://travis-ci.com/zixia/flash-store)
 [![NPM Version](https://badge.fury.io/js/flash-store.svg)](https://badge.fury.io/js/flash-store)
@@ -31,6 +31,43 @@ await flashStore.del(1)
 console.log(`key: 1, value: ${await flashStore.get(1)}`)
 ```
 
+## API Reference
+
+### `FlashStore`
+
+FlashStore implments the Standard ES6 Map API with Async modification:
+
+```ts
+/**
+ * ES6 Map API with Async
+ */
+export interface AsyncMap<K = any, V = any> {
+  [Symbol.asyncIterator](): AsyncIterableIterator<[K, V]>
+
+  clear   ()                 : Promise<void>
+  delete  (key: K)           : Promise<void>
+  entries()                  : AsyncIterableIterator<[K, V]>
+  get     (key: K)           : Promise<V | undefined>
+  has     (key: K)           : Promise<boolean>
+  keys    ()                 : AsyncIterableIterator<K>
+  set     (key: K, value: V) : Promise<void>
+  size    ()                 : Promise<number>
+  values  ()                 : AsyncIterableIterator<V>
+}
+
+class FlashStore<K, V> implments AsyncMap<K, V> {}
+```
+
+### `FlashStoreSync`
+
+FlashStoreSync implments the Standard ES6 Map API:
+
+```ts
+class FlashStoreSync<K, V> implments Map<K, V> {}
+```
+
+See more in documentation.
+
 ## DOCUMENT
 
 See [auto generated docs](https://zixia.github.io/flash-store)
@@ -58,9 +95,9 @@ Add a new class `FlashStoreSync` which is a in-memory full loaded **Write-back C
 1. Reads from cache, never read-miss because cache have the full data of the store which will never expire.
 1. API of `FlashStoreSync` is the same as the ES6 `Map`
 
-### v0.2 2017
+### v0.2 (Sep 2017)
 
-Init version, API is LevelDB like.
+Init version, API is LevelDB-like.
 
 ## AUTHOR
 
