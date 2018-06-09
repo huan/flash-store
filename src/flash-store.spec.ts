@@ -1,27 +1,33 @@
 #!/usr/bin/env ts-node
-import * as fs    from 'fs'
-import * as os    from 'os'
-import * as path  from 'path'
+import fs    from 'fs'
+import os    from 'os'
+import path  from 'path'
+
+import rimraf from 'rimraf'
 
 // tslint:disable:no-shadowed-variable
-import * as test from 'blue-tape'
+import test from 'blue-tape'
 
 // import { log }    from './config'
 // log.level('silly')
 
 import {
   FlashStore,
-}  from './flash-store'
+}               from './flash-store'
 
 const KEY     = 'test-key'
 const VAL     = 'test-val'
 const VAL_OBJ = { obj_key: 'obj_val' }
 
 test('constructor()', async t => {
-  const tmpDir = path.join(
-    os.tmpdir(),
-    `flash-store.${process.pid}`,
+  const tmpDir = fs.mkdtempSync(
+    path.join(
+      os.tmpdir(),
+      path.sep,
+      'flash-store-',
+    ),
   )
+
   t.doesNotThrow(async () => {
     const store = new FlashStore(tmpDir)
 
@@ -31,6 +37,9 @@ test('constructor()', async t => {
     t.ok(fs.existsSync(tmpDir), 'should create the workDir')
     await store.destroy()
   }, 'should not throw exception with a non existing workDir')
+
+  // `rm -fr tmpDir`
+  await new Promise(r => rimraf(tmpDir, r))
 })
 
 test('version()', async t => {
@@ -39,7 +48,7 @@ test('version()', async t => {
   }
 })
 
-test('Store as iterator', async t => {
+test('Store as async iterator', async t => {
 
   t.test('async iterator for empty store', async t => {
     for await (const store of storeFixture()) {
@@ -67,7 +76,7 @@ test('Store as iterator', async t => {
 
 })
 
-test('get()', async t => {
+test('async get()', async t => {
   t.test('return null for non existing key', async t => {
     for await (const store of storeFixture()) {
       const val = await store.get(KEY)
@@ -92,7 +101,7 @@ test('get()', async t => {
   })
 })
 
-test('set()', async t => {
+test('async set()', async t => {
   for await (const store of storeFixture()) {
     await store.set(KEY, VAL)
     const val = await store.get(KEY)
@@ -100,7 +109,7 @@ test('set()', async t => {
   }
 })
 
-test('size()', async t => {
+test('async size()', async t => {
   for await (const store of storeFixture()) {
     let size = await store.size()
     t.equal(size, 0, 'should get size 0 after init')
@@ -110,7 +119,7 @@ test('size()', async t => {
   }
 })
 
-test('keys()', async t => {
+test('async keys()', async t => {
   for await (const store of storeFixture()) {
     let count = 0
     for await (const _ of store.keys()) {
@@ -127,7 +136,7 @@ test('keys()', async t => {
   }
 })
 
-test('values()', async t => {
+test('async values()', async t => {
   for await (const store of storeFixture()) {
     let count = 0
     for await (const _ of store.values()) {
@@ -150,7 +159,15 @@ test('deferred-leveldown json bug(fixed on version 2.0.2', async t => {
   const leveldown = (await import('leveldown')).default
   const levelup   = (await import('levelup')).default
 
-  const encoded = encoding(leveldown('/tmp/test'), {
+  const tmpDir = fs.mkdtempSync(
+    path.join(
+      os.tmpdir(),
+      path.sep,
+      'flash-store-',
+    ),
+  )
+
+  const encoded = encoding(leveldown(tmpDir), {
     valueEncoding: 'json',
   })
   const levelDb = levelup(encoded)
@@ -161,6 +178,9 @@ test('deferred-leveldown json bug(fixed on version 2.0.2', async t => {
 
   t.equal(typeof value, 'object', 'value type should be object')
   t.deepEqual(value, EXPECTED_OBJ, 'should get back the original object')
+
+  // `rm -fr tmpDir`
+  await new Promise(r => rimraf(tmpDir, r))
 })
 
 async function* storeFixture() {

@@ -1,8 +1,3 @@
-// https://github.com/Microsoft/TypeScript/issues/14151#issuecomment-280812617
-if (!Symbol.asyncIterator) {
-  (<any>Symbol).asyncIterator =  Symbol.for('Symbol.asyncIterator')
-}
-
 import * as path  from 'path'
 
 import {
@@ -23,7 +18,11 @@ const levelup   = (<any>levelupProxy).default   || levelupProxy
 import {
   log,
   VERSION,
-}             from       './config'
+}             from './config'
+
+import {
+  AsyncMap,
+}             from './async-map'
 
 export interface IteratorOptions {
   gt?      : any,
@@ -34,27 +33,6 @@ export interface IteratorOptions {
   limit?   : number,
 
   prefix?  : any,
-}
-
-export interface AsyncMap<K = any, V = any> {
-  [Symbol.asyncIterator](): AsyncIterableIterator<[K, V]>
-
-  clear   ()                 : Promise<void>
-  delete  (key: K)           : Promise<void>
-  entries()                  : AsyncIterableIterator<[K, V]>
-  get     (key: K)           : Promise<V | undefined>
-  has     (key: K)           : Promise<boolean>
-  keys    ()                 : AsyncIterableIterator<K>
-  set     (key: K, value: V) : Promise<void>
-  size    ()                 : Promise<number>
-  values  ()                 : AsyncIterableIterator<V>
-
-  /**
-   * The above is ES6 Map like API with async
-   *
-   * The below is added by Huan
-   */
-  destroy(): Promise<void>
 }
 
 export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
@@ -70,7 +48,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    * const flashStore = new FlashStore('falshstore.workdir')
    */
   constructor(
-    public workdir = path.join(appRoot, 'flash-store.workdir'),
+    public workdir = path.join(appRoot, '.flash-store'),
   ) {
     log.verbose('FlashStore', 'constructor()')
 
