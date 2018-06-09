@@ -38,8 +38,6 @@ test('constructor()', async t => {
     await store.destroy()
   }, 'should not throw exception with a non existing workDir')
 
-  // `rm -fr tmpDir`
-  await new Promise(r => rimraf(tmpDir, r))
 })
 
 test('version()', async t => {

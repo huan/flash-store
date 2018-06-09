@@ -44,17 +44,19 @@ See [auto generated docs](https://zixia.github.io/flash-store)
 
 ## CHANGELOG
 
-### v0.6 master (Jun 2018)
+### v0.4 master (Jun 2018)
+
+#### 1. Refactor API to implenment ES6 `Map` interface
+
+1. Update the API to ES6 `Map`-like, the difference is that FlashStore is all **async**.
+
+#### 2. Add `FlashStoreSync` as a in-memory **Write-back Cache** for Flash-Store
 
 Add a new class `FlashStoreSync` which is a in-memory full loaded **Write-back Cache** for Flash-Store:
 
 1. Writes directly to `cache`, lazy writes to `store`.
 1. Reads from cache, never read-miss because cache have the full data of the store which will never expire.
 1. API of `FlashStoreSync` is the same as the ES6 `Map`
-
-### v0.4 (May 2018)
-
-1. Update the API to ES6 `Map`-like, the difference is that FlashStore is all **async**.
 
 ### v0.2 2017
 
