@@ -313,6 +313,11 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
 
   }
 
+  public async close(): Promise<void> {
+    log.verbose('FlashStore', 'close()')
+    await this.levelDb.close()
+  }
+
   /**
    * Destroy the database
    *

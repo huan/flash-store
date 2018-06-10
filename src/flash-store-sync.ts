@@ -24,7 +24,7 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
   constructor(
     public workdir?: string,
   ) {
-    log.verbose('CacheStore', 'constructor()')
+    log.verbose('CacheStore', 'constructor(%s)', workdir)
 
     this.asyncBusyDict = {}
     this.asyncBusyState   = new StateSwitch(workdir, log)
@@ -75,8 +75,17 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
     setBusyWhenPromiseOnFly()
   }
 
-  public async ready(): Promise<void> {
-    await this.asyncBusyState.ready('off')
+  public version(): string {
+    return this.flashStore.version()
+  }
+
+  /**
+   *
+   * Async methods:
+   *
+   */
+  public async close(): Promise<void> {
+    await this.flashStore.close()
   }
 
   public async destroy(): Promise<void> {
@@ -87,8 +96,8 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
     )
   }
 
-  public version(): string {
-    return this.flashStore.version()
+  public async ready(): Promise<void> {
+    await this.asyncBusyState.ready('off')
   }
 
   /////////////////////////////////////////////////////////
