@@ -85,6 +85,7 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
    *
    */
   public async close(): Promise<void> {
+    await this.ready()
     await this.flashStore.close()
   }
 
