@@ -11,25 +11,6 @@ import {
   FlashStore,
 }             from './flash-store'
 
-export class BusyMeter {
-  private promiseDict: {
-    [id: string]: Promise<void>,
-  }
-
-  constructor() {
-    this.promiseDict = {}
-  }
-
-  public async busy(): Promise<boolean> {
-    return Reflect.ownKeys(this.promiseDict).length > 0
-  }
-
-  public async idle(): Promise<void> {
-    return
-  }
-
-}
-
 export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
 
   private cacheMap   : Map<K,        V>
@@ -92,6 +73,10 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
       })
     })
     setBusyWhenPromiseOnFly()
+  }
+
+  public async ready(): Promise<void> {
+    await this.asyncBusyState.ready('off')
   }
 
   public async destroy(): Promise<void> {
