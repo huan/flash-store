@@ -38,7 +38,7 @@
     "brolog": "^1.2.6",
     "cuid": "^2.1.1",
     "encoding-down": "^2.3.1",
-    "leveldown": "^2.0.0",
+    "leveldown": "^4.0.1",
     "levelup": "github:zixia/levelup",
     "rimraf": "^2.6.2",
     "state-switch": "^0.4.5"
@@ -46,6 +46,7 @@
   "devDependencies": {
     "@types/app-root-path": "^1.2.4",
     "@types/blue-tape": "^0.1.31",
+    "@types/leveldown": "^1.7.0",
     "@types/node": "^8.0.30",
     "@types/rimraf": "^2.0.2",
     "@types/semver": "^5.5.0",

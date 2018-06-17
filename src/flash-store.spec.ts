@@ -165,7 +165,7 @@ test('deferred-leveldown json bug(fixed on version 2.0.2', async t => {
     ),
   )
 
-  const encoded = encoding(leveldown(tmpDir), {
+  const encoded = encoding(leveldown(tmpDir) as any, {
     valueEncoding: 'json',
   })
   const levelDb = levelup(encoded)
