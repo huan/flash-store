@@ -6,13 +6,13 @@ import {
 
 import * as rimrafProxy     from 'rimraf'
 import * as encodingProxy   from 'encoding-down'
-import * as leveldownProxy  from 'leveldown'
+import LevelDb  from 'nosql-leveldb'
 import * as levelupProxy    from 'levelup'
 
 // https://github.com/rollup/rollup/issues/1267#issuecomment-296395734
 const rimraf    = (<any>rimrafProxy).default    || rimrafProxy
 const encoding  = (<any>encodingProxy).default  || encodingProxy
-const leveldown = (<any>leveldownProxy).default || leveldownProxy
+// const leveldown = (<any>leveldownProxy).default || leveldownProxy
 const levelup   = (<any>levelupProxy).default   || levelupProxy
 
 import {
@@ -54,7 +54,8 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
 
     // https://twitter.com/juliangruber/status/908688876381892608
     const encoded = encoding(
-      leveldown(workdir),
+      // leveldown(workdir),
+      LevelDb(workdir),
       {
         // FIXME: issue #2
         valueEncoding: 'json',

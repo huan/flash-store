@@ -3,7 +3,7 @@ import fs    from 'fs'
 import os    from 'os'
 import path  from 'path'
 
-import rimraf from 'rimraf'
+// import rimraf from 'rimraf'
 
 // tslint:disable:no-shadowed-variable
 import test from 'blue-tape'
@@ -152,34 +152,34 @@ test('async values()', async t => {
   }
 })
 
-test('deferred-leveldown json bug(fixed on version 2.0.2', async t => {
-  const encoding  = (await import('encoding-down')).default
-  const leveldown = (await import('leveldown')).default
-  const levelup   = (await import('levelup')).default
+// test('deferred-leveldown json bug(fixed on version 2.0.2', async t => {
+//   const encoding  = (await import('encoding-down')).default
+//   const leveldown = (await import('leveldown')).default
+//   const levelup   = (await import('levelup')).default
 
-  const tmpDir = fs.mkdtempSync(
-    path.join(
-      os.tmpdir(),
-      path.sep,
-      'flash-store-',
-    ),
-  )
+//   const tmpDir = fs.mkdtempSync(
+//     path.join(
+//       os.tmpdir(),
+//       path.sep,
+//       'flash-store-',
+//     ),
+//   )
 
-  const encoded = encoding(leveldown(tmpDir) as any, {
-    valueEncoding: 'json',
-  })
-  const levelDb = levelup(encoded)
+//   const encoded = encoding(leveldown(tmpDir) as any, {
+//     valueEncoding: 'json',
+//   })
+//   const levelDb = levelup(encoded)
 
-  const EXPECTED_OBJ = {a: 1}
-  await levelDb.put('test', EXPECTED_OBJ)
-  const value = await levelDb.get('test')
+//   const EXPECTED_OBJ = {a: 1}
+//   await levelDb.put('test', EXPECTED_OBJ)
+//   const value = await levelDb.get('test')
 
-  t.equal(typeof value, 'object', 'value type should be object')
-  t.deepEqual(value, EXPECTED_OBJ, 'should get back the original object')
+//   t.equal(typeof value, 'object', 'value type should be object')
+//   t.deepEqual(value, EXPECTED_OBJ, 'should get back the original object')
 
-  // `rm -fr tmpDir`
-  await new Promise(r => rimraf(tmpDir, r))
-})
+//   // `rm -fr tmpDir`
+//   await new Promise(r => rimraf(tmpDir, r))
+// })
 
 async function* storeFixture() {
   const tmpDir = fs.mkdtempSync(
