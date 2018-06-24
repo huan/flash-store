@@ -144,3 +144,16 @@ test('values()', async t => {
     t.equal(count, 1, 'should get 1 value after 1 put')
   }
 })
+
+test('close()', async t => {
+  for await (const storeSync of storeSyncFixture()) {
+    storeSync.set('KEY1', VAL)
+    storeSync.set('KEY2', VAL)
+    storeSync.set('KEY3', VAL)
+    storeSync.set('KEY4', VAL)
+    storeSync.set('KEY5', VAL)
+
+    await storeSync.close()
+    t.pass('should close')
+  }
+})

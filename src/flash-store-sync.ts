@@ -32,7 +32,7 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
     this.cacheMap   = new Map<K,        V>()
     this.flashStore = new FlashStore<K, V>(workdir)
 
-    this.asyncAddTask(this.loadStoreToCache())
+    this.asyncBusyAdd(this.loadStoreToCache())
 
   }
 
@@ -43,36 +43,18 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
     }
   }
 
-  private asyncAddTask(future: Promise<void>): void {
-    const setBusyWhenPromiseOnFly = () => {
-      if (this.asyncBusyState.on()) {
-        return
-      }
-      if (Reflect.ownKeys(this.asyncBusyDict).length > 0) {
-        // id/promise exists
-        this.asyncBusyState.on(true)
-      }
-    }
-
-    const unsetBusyWhenNoPromiseOnFly = () => {
-      if (this.asyncBusyState.off()) {
-        return
-      }
-      if (Reflect.ownKeys(this.asyncBusyDict).length <= 0) {
-        // id/promise all cleared
-        this.asyncBusyState.off(true)
-      }
-    }
-
+  private asyncBusyAdd(task: Promise<void>): void {
     const id = cuid()
     this.asyncBusyDict[id] = new Promise<void>((resolve, reject) => {
-      future.then(resolve, reject)
+      task.then(resolve, reject)
       .finally(() => {
         delete this.asyncBusyDict[id]
-        unsetBusyWhenNoPromiseOnFly()
+        if (Object.keys(this.asyncBusyDict).length <= 0) {
+          this.asyncBusyState.off(true)
+        }
       })
     })
-    setBusyWhenPromiseOnFly()
+    this.asyncBusyState.on(true)
   }
 
   public version(): string {
@@ -136,12 +118,12 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
   }
 
   public clear(): void {
-    this.asyncAddTask(this.flashStore.clear())
+    this.asyncBusyAdd(this.flashStore.clear())
     return this.cacheMap.clear()
   }
 
   public delete(key: K): boolean {
-    this.asyncAddTask(this.flashStore.delete(key))
+    this.asyncBusyAdd(this.flashStore.delete(key))
     return this.cacheMap.delete(key)
   }
 
@@ -165,7 +147,7 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
   }
 
   public set(key: K, value: V): this {
-    this.asyncAddTask(this.flashStore.set(key, value))
+    this.asyncBusyAdd(this.flashStore.set(key, value))
     this.cacheMap.set(key, value)
     return this
   }
