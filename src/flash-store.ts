@@ -82,13 +82,13 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    */
   public async put(key: K, value: V): Promise<void> {
     log.warn('FlashStore', '`put()` DEPRECATED. use `set()` instead.')
-    return this.set(key, value)
+    await this.set(key, value)
   }
 
   public async set(key: K, value: V): Promise<void> {
     log.verbose('FlashStore', 'set(%s, %s) value type: %s', key, value, typeof value)
     // FIXME: issue #2
-    return await this.levelDb.put(key, JSON.stringify(value) as any)
+    await this.levelDb.put(key, JSON.stringify(value) as any)
   }
 
   /**
@@ -120,14 +120,14 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    * @example
    * await flashStore.del(1)
    */
-  public del(key: K): Promise<void> {
+  public async del(key: K): Promise<void> {
     log.verbose('FlashStore', '`del()` DEPRECATED. use `delete()` instead')
-    return this.delete(key)
+    await this.delete(key)
   }
 
-  public delete(key: K): Promise<void> {
+  public async delete(key: K): Promise<void> {
     log.verbose('FlashStore', 'delete(%s)', key)
-    return this.levelDb.del(key)
+    await this.levelDb.del(key)
   }
 
   /**
@@ -169,7 +169,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
       options.lte = options.prefix + '\xff'
     }
 
-    for await (const [key, _] of this.entries(options)) {
+    for await (const [key] of this.entries(options)) {
       yield key
     }
   }
@@ -192,7 +192,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
     //   values : true,
     // })
 
-    for await (const [_, value] of this.entries(options)) {
+    for await (const [, value] of this.entries(options)) {
       yield value
     }
 
@@ -200,7 +200,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
 
   /**
    * Get the counts of the database
-   *
+   * @deprecated use property `size` instead
    * @returns {Promise<number>}
    * @example
    * const count = await flashStore.count()
@@ -208,12 +208,14 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    */
   public async count(): Promise<number> {
     log.warn('FlashStore', '`count()` DEPRECATED. use `size()` instead.')
-    return this.size
+    const size = await this.size
+    return size
   }
 
   public get size(): Promise<number> {
     log.verbose('FlashStore', 'size()')
 
+    // TODO: is there a better way to count all items from the db?
     return new Promise<number>(async (resolve, reject) => {
       try {
         let count = 0

@@ -44,17 +44,17 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
   }
 
   private asyncBusyAdd(task: Promise<void>): void {
-    const id = cuid()
-    this.asyncBusyDict[id] = new Promise<void>((resolve, reject) => {
-      task.then(resolve, reject)
-      .finally(() => {
-        delete this.asyncBusyDict[id]
-        if (Object.keys(this.asyncBusyDict).length <= 0) {
-          this.asyncBusyState.off(true)
-        }
-      })
-    })
     this.asyncBusyState.on(true)
+
+    const id = cuid()
+    this.asyncBusyDict[id] = task.finally(() => {
+      delete this.asyncBusyDict[id]
+      if (Object.keys(this.asyncBusyDict).length <= 0) {
+
+        this.asyncBusyState.off(true)
+
+      }
+    })
   }
 
   public version(): string {
