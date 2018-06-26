@@ -5,6 +5,9 @@ if (!Symbol.asyncIterator) {
   (<any>Symbol).asyncIterator = Symbol.for('Symbol.asyncIterator')
 }
 
-export { log } from 'brolog'
+import { Brolog } from 'brolog'
+export const log = new Brolog()
 
-export { version as VERSION } from '../package.json'
+export {
+  version as VERSION,
+}                       from '../package.json'
