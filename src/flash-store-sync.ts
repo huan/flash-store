@@ -26,8 +26,13 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
   ) {
     log.verbose('CacheStore', 'constructor(%s)', workdir)
 
+    workdir = workdir || '.flash-store-sync'
+
     this.asyncBusyDict = {}
-    this.asyncBusyState   = new StateSwitch(workdir, log)
+    this.asyncBusyState   = new StateSwitch(
+      workdir.split('/').pop(), // get the latest folder name
+      log,
+    )
 
     this.cacheMap   = new Map<K,        V>()
     this.flashStore = new FlashStore<K, V>(workdir)
