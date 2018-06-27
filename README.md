@@ -24,11 +24,16 @@ The basic function as follows:
 
 ```ts
 import { FlashStore } from 'flash-store'
+
 const flashStore = new FlashStore('flashstore.workdir')
+
 await flashStore.put(1, 'a')
 console.log(`key: 1, value: ${await flashStore.get(1)}`)
+// Output: 'a'
+
 await flashStore.del(1)
 console.log(`key: 1, value: ${await flashStore.get(1)}`)
+// Output: undefined
 ```
 
 ## API Reference
@@ -66,11 +71,11 @@ FlashStoreSync implments the Standard ES6 Map API:
 class FlashStoreSync<K, V> implments Map<K, V> {}
 ```
 
-See more in documentation.
-
 ## DOCUMENT
 
 See [auto generated docs](https://zixia.github.io/flash-store)
+
+* [ECMAScript 6: Maps - 2ality – JavaScript and more](http://2ality.com/2015/01/es6-maps-sets.html)
 
 ## SEE ALSO
 

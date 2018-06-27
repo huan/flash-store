@@ -1,6 +1,6 @@
 {
   "name": "flash-store",
-  "version": "0.4.8",
+  "version": "0.5.6",
   "description": "FlashStore is a Key-Value persistent storage with easy to use ES6 Map-like API(both Async and Sync support), powered by LevelDB and TypeScript.",
   "main": "bundles/flash-store.umd.js",
   "types": "dist/index.d.ts",
@@ -16,7 +16,7 @@
     "rollup": "rollup -c",
     "test": "npm run lint && npm run test:unit",
     "test:pack": "bash -x scripts/npm-pack-testing.sh",
-    "test:unit": "blue-tape -r ts-node/register -r source-map-support/register \"src/**/*.spec.ts\" \"tests/**/*.spec.ts\""
+    "test:unit": "blue-tape -r ts-node/register \"src/**/*.spec.ts\" \"tests/**/*.spec.ts\""
   },
   "repository": {
     "type": "git",
@@ -61,9 +61,9 @@
     "sinon": "^3.3.0",
     "sinon-test": "^2.1.1",
     "source-map-support": "^0.4.18",
-    "ts-node": "^3.3.0",
-    "tslint": "^5.7.0",
-    "typescript": "^2.5.2"
+    "ts-node": "^7.0.0",
+    "tslint": "^5.10.0",
+    "typescript": "^2.9.2"
   },
   "files": [
     "package.json",
@@ -78,6 +78,9 @@
     "scripts": {
       "pre-push": "./scripts/pre-push.sh"
     }
+  },
+  "engines": {
+    "node": ">= 10"
   },
   "publishConfig": {
     "access": "public",
