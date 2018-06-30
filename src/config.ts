@@ -8,6 +8,12 @@ if (!Symbol.asyncIterator) {
 import { Brolog } from 'brolog'
 export const log = new Brolog()
 
-export {
-  version as VERSION,
-}                       from '../package.json'
+export let VERSION = '0.0.0'
+
+try {
+  const pkg = require('../package.json')
+  VERSION = pkg.version
+} catch (e) {
+  const pkg = require('../../package.json')
+  VERSION = pkg.version
+}
