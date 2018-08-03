@@ -4,16 +4,16 @@ import {
   path as appRoot,
 }                   from 'app-root-path'
 
-import * as rimrafProxy     from 'rimraf'
-import * as encodingProxy   from 'encoding-down'
-import LevelDb  from 'nosql-leveldb'
-import * as levelupProxy    from 'levelup'
+import rimraf    from 'rimraf'
+import encoding  from 'encoding-down'
+import LevelDb   from 'nosql-leveldb'
+import levelup   from 'levelup'
 
 // https://github.com/rollup/rollup/issues/1267#issuecomment-296395734
-const rimraf    = (<any>rimrafProxy).default    || rimrafProxy
-const encoding  = (<any>encodingProxy).default  || encodingProxy
-// const leveldown = (<any>leveldownProxy).default || leveldownProxy
-const levelup   = (<any>levelupProxy).default   || levelupProxy
+// const rimraf    = (<any>rimrafProxy).default    || rimrafProxy
+// const encoding  = (<any>encodingProxy).default  || encodingProxy
+// // const leveldown = (<any>leveldownProxy).default || leveldownProxy
+// const levelup   = (<any>levelupProxy).default   || levelupProxy
 
 import {
   log,

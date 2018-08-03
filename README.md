@@ -89,6 +89,8 @@ See [auto generated docs](https://zixia.github.io/flash-store)
 
 ### v0.6 master
 
+1. Upgrade to TypeScript 3.0
+
 ### v0.4 Jun 2018
 
 #### 1. Refactor API to implenment ES6 `Map` interface
