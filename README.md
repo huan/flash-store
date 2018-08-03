@@ -43,7 +43,7 @@ console.log(`key: 1, value: ${await flashStore.get(1)}`)
 FlashStore implments the Standard ES6 Map API with Async modification:
 
 ```ts
-/**
+/
  * ES6 Map API with Async
  */
 export interface AsyncMap<K = any, V = any> {
@@ -86,7 +86,9 @@ See [auto generated docs](https://zixia.github.io/flash-store)
 
 ## CHANGELOG
 
-### v0.4 master (Jun 2018)
+### v0.6 master
+
+### v0.4 Jun 2018
 
 #### 1. Refactor API to implenment ES6 `Map` interface
 
@@ -100,7 +102,7 @@ Add a new class `FlashStoreSync` which is a in-memory full loaded **Write-back C
 1. Reads from cache, never read-miss because cache have the full data of the store which will never expire.
 1. API of `FlashStoreSync` is the same as the ES6 `Map`
 
-### v0.2 (Sep 2017)
+### v0.2 Sep 2017
 
 Init version, API is LevelDB-like.
 
