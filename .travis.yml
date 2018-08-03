@@ -15,7 +15,7 @@ script:
   - node --version
   - npm --version
   - echo "Testing started ..."
-  - npm test || travis_terminate 1
+  - npm test
 
 after_success:
   - if [ "$TRAVIS_OS_NAME" == 'osx' ]; then npm run coverage; fi
@@ -31,7 +31,7 @@ jobs:
   include:
     - stage: pack
       script:
-        - npm run test:pack && echo 'Npm pack testing is passed' || travis_terminate 1
+        - npm run test:pack && echo 'Npm pack testing is passed'
 
     - stage: deploy
       script:
