@@ -52,7 +52,7 @@
     "@types/sinon": "^2.3.5",
     "@types/sinon-test": "^1.0.2",
     "blue-tape": "^1.0.0",
-    "git-scripts": "^0.2.1",
+    "git-scripts": "git+https://github.com/nkzawa/git-scripts.git",
     "jsdoc-to-markdown": "^3.0.0",
     "rollup": "^0.50.0",
     "rollup-plugin-json": "^2.3.0",
