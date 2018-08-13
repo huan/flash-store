@@ -4,3 +4,5 @@ declare module '*/package.json' {
 }
 
 declare module 'leveldown'
+declare module 'encoding-down'
+declare module 'levelup'
