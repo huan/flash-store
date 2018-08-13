@@ -6,7 +6,7 @@ import {
 
 import rimraf    from 'rimraf'
 import encoding  from 'encoding-down'
-import LevelDb   from 'nosql-leveldb'
+import leveldown from 'leveldown'
 import levelup   from 'levelup'
 
 // https://github.com/rollup/rollup/issues/1267#issuecomment-296395734
@@ -55,7 +55,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
     // https://twitter.com/juliangruber/status/908688876381892608
     const encoded = encoding(
       // leveldown(workdir),
-      LevelDb(workdir),
+      leveldown(workdir),
       {
         // FIXME: issue #2
         valueEncoding: 'json',

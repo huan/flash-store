@@ -1,6 +1,6 @@
 {
   "name": "flash-store",
-  "version": "0.7.1",
+  "version": "0.9.1",
   "description": "FlashStore is a Key-Value persistent storage with easy to use ES6 Map-like API(both Async and Sync support), powered by LevelDB and TypeScript.",
   "main": "bundles/flash-store.umd.js",
   "types": "dist/index.d.ts",
@@ -38,8 +38,8 @@
     "brolog": "^1.2.6",
     "cuid": "^2.1.1",
     "encoding-down": "^2.3.4",
+    "leveldown": "^4.0.1",
     "levelup": "github:zixia/levelup",
-    "nosql-leveldb": "^3.0.1",
     "rimraf": "^2.6.2",
     "state-switch": "^0.6.2"
   },
