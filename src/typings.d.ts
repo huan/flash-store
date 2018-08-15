@@ -3,4 +3,6 @@ declare module '*/package.json' {
   // export default version
 }
 
-declare module 'nosql-leveldb'
+declare module 'leveldown'
+declare module 'encoding-down'
+declare module 'levelup'
