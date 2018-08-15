@@ -12,6 +12,10 @@ FlashStore is a Key-Value persistent storage with easy to use ES6 Map-like API(b
 
 ![flash store](https://zixia.github.io/flash-store/images/flash-store.png)
 
+## REQUIRES
+
+1. Node.js v10 or above
+
 ## EXAMPLES
 
 Try the following command
@@ -81,9 +85,9 @@ See [auto generated docs](https://zixia.github.io/flash-store)
 ## SEE ALSO
 
 1. [Node.js databases: an embedded database using LevelDB](https://blog.yld.io/2016/10/24/node-js-databases-an-embedded-database-using-leveldb)
-1. [How to Cook a Graph Database in a Night - LevelGraph](http://nodejsconfit.levelgraph.io/)
-1. [Graph database JS style for Node.js and the Browser. Built upon LevelUp and LevelDB.](https://github.com/levelgraph/levelgraph)
-1. [浅析 Bigtable 和 LevelDB 的实现](http://draveness.me/bigtable-leveldb.html)
+2. [How to Cook a Graph Database in a Night - LevelGraph](http://nodejsconfit.levelgraph.io/)
+3. [Graph database JS style for Node.js and the Browser. Built upon LevelUp and LevelDB.](https://github.com/levelgraph/levelgraph)
+4. [浅析 Bigtable 和 LevelDB 的实现](http://draveness.me/bigtable-leveldb.html)
 
 ## CHANGELOG
 
