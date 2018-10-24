@@ -92,7 +92,15 @@ See [auto generated docs](https://zixia.github.io/flash-store)
 
 ## CHANGELOG
 
-### v0.6 master
+### v0.11 master 2018
+
+1. Use `level-down` as backend to skip the compiling when install.
+
+### v0.7 Aug 2018
+
+1. Use `nosql-leveldb` as backend to prevent segfault.
+
+### v0.6 Jul 2018
 
 1. Upgrade to TypeScript 3.0
 
