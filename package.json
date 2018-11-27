@@ -20,7 +20,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zixia/flash-store.git"
+    "url": "git+https://github.com/huan/flash-store.git"
   },
   "keywords": [
     "leveldb",
@@ -30,9 +30,9 @@
   "author": "Huan LI <zixia@zixia.net>",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/zixia/flash-store/issues"
+    "url": "https://github.com/huan/flash-store/issues"
   },
-  "homepage": "https://github.com/zixia/flash-store#readme",
+  "homepage": "https://github.com/huan/flash-store#readme",
   "dependencies": {
     "app-root-path": "^2.0.1",
     "brolog": "^1.2.6",

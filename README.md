@@ -2,16 +2,16 @@
 
 [![Powered by LevelDB](https://img.shields.io/badge/Powered%20By-LevelDB-green.svg)](https://leveldb.org/)
 [![Powered by TypeScript](https://img.shields.io/badge/Powered%20By-TypeScript-blue.svg)](https://www.typescriptlang.org/)
-[![Build Status](https://travis-ci.com/zixia/flash-store.svg?branch=master)](https://travis-ci.com/zixia/flash-store)
+[![Build Status](https://travis-ci.com/huan/flash-store.svg?branch=master)](https://travis-ci.com/huan/flash-store)
 [![Build status](https://ci.appveyor.com/api/projects/status/avwx4bnldox01870?svg=true)](https://ci.appveyor.com/project/zixia/flash-store)
 [![NPM Version](https://badge.fury.io/js/flash-store.svg)](https://badge.fury.io/js/flash-store)
 [![npm (tag)](https://img.shields.io/npm/v/flash-store/next.svg)](https://www.npmjs.com/package/flash-store?activeTab=versions)
 [![Downloads](http://img.shields.io/npm/dm/flash-store.svg?style=flat-square)](https://npmjs.org/package/flash-store)
-[![node](https://img.shields.io/node/v/flash-store.svg?maxAge=604800)](https://nodejs.org/) [![Greenkeeper badge](https://badges.greenkeeper.io/zixia/flash-store.svg)](https://greenkeeper.io/)
+[![node](https://img.shields.io/node/v/flash-store.svg?maxAge=604800)](https://nodejs.org/) [![Greenkeeper badge](https://badges.greenkeeper.io/huan/flash-store.svg)](https://greenkeeper.io/)
 
 FlashStore is a Key-Value persistent storage with easy to use ES6 Map-like API(both Async and Sync support), powered by LevelDB and TypeScript.
 
-![flash store](https://zixia.github.io/flash-store/images/flash-store.png)
+![flash store](https://huan.github.io/flash-store/images/flash-store.png)
 
 ## REQUIRES
 
@@ -79,7 +79,7 @@ class FlashStoreSync<K, V> implments Map<K, V> {}
 
 ## DOCUMENT
 
-See [auto generated docs](https://zixia.github.io/flash-store)
+See [auto generated docs](https://huan.github.io/flash-store)
 
 * [ECMAScript 6: Maps - 2ality – JavaScript and more](http://2ality.com/2015/01/es6-maps-sets.html)
 
