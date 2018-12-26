@@ -37,7 +37,7 @@
     "app-root-path": "^2.0.1",
     "brolog": "^1.2.6",
     "cuid": "^2.1.1",
-    "encoding-down": "^5.0.4",
+    "encoding-down": "^6.0.0",
     "leveldown": "^4.0.1",
     "levelup": "^3.1.1",
     "rimraf": "^2.6.2",
