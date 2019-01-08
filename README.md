@@ -128,7 +128,7 @@ Init version, API is LevelDB-like.
 
 Short answer:
 1. `flash-store` is for save data to local flesystem.
-1. `memory-card` is for save data to a distributed network storage.
+1. `memory-card` is for save data to a distributed network storage, it can be serilized/deserilized safely by design.
 
 Long answer:
 
