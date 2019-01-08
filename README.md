@@ -122,6 +122,23 @@ Add a new class `FlashStoreSync` which is a in-memory full loaded **Write-back C
 
 Init version, API is LevelDB-like.
 
+## FAQ
+
+### Q: What's the difference between the `flash-store` and `memory-card`?
+
+Short answer:
+1. `flash-store` is for save data to local flesystem.
+1. `memory-card` is for save data to a distributed network storage, it can be serilized/deserilized safely by design.
+
+Long answer:
+
+`flash-store` and `memory-card` are all built by @huan, and they are all follow the ES6 Map API.
+
+`flash-store` is using a no-sql local file database to maximum the performance, it can be used as a local database, or a local cache for whatever you want to catch from a network database.
+
+`memory-card` is using a local file to store data in JSON format by default, however, it supports more distributed methods. Learn more from it's repository at [here](https://github.com/huan/memory-card)
+
+
 ## AUTHOR
 
 Huan LI \<zixia@zixia.net\> (http://linkedin.com/in/zixia)
@@ -132,6 +149,6 @@ Huan LI \<zixia@zixia.net\> (http://linkedin.com/in/zixia)
 
 ## COPYRIGHT & LICENSE
 
-* Code & Docs © 2017 Huan LI \<zixia@zixia.net\>
+* Code & Docs © 2017-2019 Huan LI \<zixia@zixia.net\>
 * Code released under the Apache-2.0 License
 * Docs released under Creative Commons
