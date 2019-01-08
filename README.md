@@ -92,9 +92,12 @@ See [auto generated docs](https://huan.github.io/flash-store)
 
 ## CHANGELOG
 
-### v0.11 master 2018
+### v0.13 master 2019
+
+### v0.12 Jan 2019
 
 1. Use [level-down](https://github.com/level/leveldown) as backend to skip the compiling when install.
+1. Using leveldb official typings from `@types/`
 
 ### v0.7 Aug 2018
 
