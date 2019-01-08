@@ -94,11 +94,11 @@ See [auto generated docs](https://huan.github.io/flash-store)
 
 ### v0.11 master 2018
 
-1. Use `level-down` as backend to skip the compiling when install.
+1. Use [level-down](https://github.com/level/leveldown) as backend to skip the compiling when install.
 
 ### v0.7 Aug 2018
 
-1. Use `nosql-leveldb` as backend to prevent segfault.
+1. Use [nosql-leveldb](https://github.com/snowyu/node-nosql-leveldb) as backend to prevent segfault.
 
 ### v0.6 Jul 2018
 
