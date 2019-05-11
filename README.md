@@ -92,7 +92,11 @@ See [auto generated docs](https://huan.github.io/flash-store)
 
 ## CHANGELOG
 
-### v0.13 master 2019
+### v0.15 master 2019
+
+### v0.14 May 2019
+
+1. Switch from LevelDB to RocksDB [#34](https://github.com/huan/flash-store/issues/34)
 
 ### v0.12 Jan 2019
 
