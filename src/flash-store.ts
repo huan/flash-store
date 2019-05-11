@@ -4,16 +4,11 @@ import {
   path as appRoot,
 }                   from 'app-root-path'
 
-import rimraf    from 'rimraf'
-import encoding  from 'encoding-down'
-import leveldown from 'leveldown'
-import levelup   from 'levelup'
-
-// https://github.com/rollup/rollup/issues/1267#issuecomment-296395734
-// const rimraf    = (<any>rimrafProxy).default    || rimrafProxy
-// const encoding  = (<any>encodingProxy).default  || encodingProxy
-// // const leveldown = (<any>leveldownProxy).default || leveldownProxy
-// const levelup   = (<any>levelupProxy).default   || levelupProxy
+import rimraf     from 'rimraf'
+import encoding   from 'encoding-down'
+// import leveldown from 'leveldown'
+import rocksdb    from 'rocksdb'
+import levelup    from 'levelup'
 
 import {
   log,
@@ -55,7 +50,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
     // https://twitter.com/juliangruber/status/908688876381892608
     const encoded = encoding(
       // leveldown(workdir),
-      leveldown(workdir),
+      rocksdb(workdir),
       {
         // FIXME: issue #2
         valueEncoding: 'json',
