@@ -49,7 +49,7 @@ console.log(`key: 1, value: ${await flashStore.get(1)}`)
 FlashStore implments the Standard ES6 Map API with Async modification:
 
 ```ts
-/
+/**
  * ES6 Map API with Async
  */
 export interface AsyncMap<K = any, V = any> {
