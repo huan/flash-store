@@ -12,7 +12,8 @@
     "demo": "ts-node example/demo.ts",
     "dist": "npm run clean && npm run build && npm run rollup && npm run dist:es6to5",
     "dist:es6to5": "tsc --out ./bundles/flash-store.umd.js --target es5 --allowJs bundles/flash-store.es6.umd.js --lib es6,dom",
-    "lint": "tslint --project tsconfig.json && npm run clean && tsc --noEmit",
+    "lint": "npm run lint:es && npm run clean && tsc --noEmit",
+    "lint:es": "eslint 'src/**/*.ts' 'tests/**/*.ts' --ignore-pattern tests/fixtures/",
     "rollup": "rollup -c",
     "test": "npm run lint && npm run test:unit",
     "test:pack": "bash -x scripts/npm-pack-testing.sh",
@@ -44,28 +45,22 @@
     "state-switch": "^0.6.2"
   },
   "devDependencies": {
+    "@chatie/eslint-config": "^0.6.8",
+    "@chatie/git-scripts": "^0.2.5",
+    "@chatie/semver": "^0.4.7",
+    "@chatie/tsconfig": "^0.6.1",
     "@types/app-root-path": "^1.2.4",
-    "@types/blue-tape": "^0.1.31",
     "@types/encoding-down": "^5.0.0",
     "@types/levelup": "^3.1.0",
-    "@types/node": "^12.0.1",
     "@types/rimraf": "^2.0.2",
-    "@types/semver": "^6.0.0",
     "@types/rocksdb": "^3.0.0",
-    "@types/sinon": "^7.0.0",
-    "blue-tape": "^1.0.0",
-    "git-scripts": "git+https://github.com/nkzawa/git-scripts.git",
     "jsdoc-to-markdown": "^4.0.1",
+    "pkg-jq": "^0.2.2",
     "rollup": "^1.0.0",
     "rollup-plugin-json": "^4.0.0",
-    "semver": "^6.0.0",
     "shx": "^0.3.2",
-    "sinon": "^7.1.1",
-    "sinon-test": "^2.1.1",
     "source-map-support": "^0.5.6",
-    "ts-node": "^8.0.3",
-    "tslint": "^5.10.0",
-    "typescript": "^3.0.1"
+    "tstest": "^0.4.2"
   },
   "files": [
     "package.json",
@@ -76,16 +71,16 @@
     "src/",
     "dist/"
   ],
-  "git": {
-    "scripts": {
-      "pre-push": "./scripts/pre-push.sh"
-    }
-  },
   "engines": {
     "node": ">= 10"
   },
   "publishConfig": {
     "access": "public",
-    "tag": "latest"
+    "tag": "next"
+  },
+  "git": {
+    "scripts": {
+      "pre-push": "npx git-scripts-pre-push"
+    }
   }
 }

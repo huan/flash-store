@@ -14,7 +14,7 @@ import {
   FlashStoreSync,
 }                   from './flash-store-sync'
 
-async function* storeSyncFixture() {
+async function * storeSyncFixture () {
   const tmpDir = fs.mkdtempSync(
     path.join(
       os.tmpdir(),
@@ -44,6 +44,7 @@ test('Store as iterator', async t => {
   t.test('iterator for empty store', async t => {
     for await (const storeSync of storeSyncFixture()) {
       let n = 0
+      /* eslint @typescript-eslint/no-unused-vars: off */
       for (const _ of storeSync) {
         n++
         break
