@@ -3,9 +3,9 @@
   "version": "0.15.2",
   "description": "FlashStore is a Key-Value persistent storage with easy to use ES6 Map-like API(both Async and Sync support), powered by LevelDB and TypeScript.",
   "main": "bundles/flash-store.umd.js",
-  "types": "dist/index.d.ts",
+  "types": "dist/src/index.d.ts",
   "scripts": {
-    "build": "tsc --module esnext",
+    "build": "tsc --module esnext --moduleResolution node",
     "pack": "npm pack",
     "clean": "shx rm -fr dist/* bundles/*",
     "doc": "npm run dist && echo '# FlashStore v'$(jq -r .version package.json)' Documentation\n' > docs/index.md && jsdoc2md dist/flash-store.js>> docs/index.md",
