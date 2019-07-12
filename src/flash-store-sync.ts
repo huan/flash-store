@@ -78,10 +78,21 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
 
   public async destroy (): Promise<void> {
     this.clear()
-    // add destroy task at the end of the event loop
+
+    /**
+     * Add destroy task at the end of the event loop
+     *
+     * We need to not `await` at here
+     * because the destroy() needs to return
+     * without wait any async task
+     */
     this.asyncBusyState.ready('off').then(
       () => this.flashStore.destroy(),
-    )
+    ).catch(e => {
+      log.error('FlashStoreSync', 'destroy() this.flashStore.destroy() rejection: %s',
+        e && e.message
+      )
+    })
   }
 
   public async ready (): Promise<void> {
