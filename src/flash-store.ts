@@ -43,7 +43,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    * import { FlashStore } from 'flash-store'
    * const flashStore = new FlashStore('flashstore.workdir')
    */
-  constructor(
+  constructor (
     public workdir = path.join(appRoot, '.flash-store'),
   ) {
     log.verbose('FlashStore', 'constructor()')
@@ -68,7 +68,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
     })
   }
 
-  public version(): string {
+  public version (): string {
     return VERSION
   }
 
@@ -98,7 +98,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    * @example
    * console.log(await flashStore.get(1))
    */
-  public async get(key: K): Promise<V | undefined> {
+  public async get (key: K): Promise<V | undefined> {
     log.verbose('FlashStore', 'get(%s)', key)
     try {
       // FIXME: string for SnapDB only
@@ -155,7 +155,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    *   console.log(key)
    * }
    */
-  public async* keys(options: IteratorOptions = {}): AsyncIterableIterator<K> {
+  public async * keys (options: IteratorOptions = {}): AsyncIterableIterator<K> {
     log.verbose('FlashStore', 'keys()')
 
     // options = Object.assign(options, {
@@ -186,7 +186,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    *   console.log(value)
    * }
    */
-  public async* values(options: IteratorOptions = {}): AsyncIterableIterator<V> {
+  public async * values (options: IteratorOptions = {}): AsyncIterableIterator<V> {
     log.verbose('FlashStore', 'values()')
 
     // options = Object.assign(options, {
@@ -207,7 +207,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    * const size = await flashStore.size
    * console.log(`database size: ${size}`)
    */
-  public get size(): Promise<number> {
+  public get size (): Promise<number> {
     log.verbose('FlashStore', 'size()')
 
     // TODO: is there a better way to count all items from the db?
@@ -228,7 +228,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   /**
    * FIXME: use better way to do this
    */
-  public async has(key: K): Promise<boolean> {
+  public async has (key: K): Promise<boolean> {
     const val = await this.get(key)
     return !!val
   }
@@ -236,7 +236,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   /**
    * TODO: use better way to do this with leveldb
    */
-  public async clear(): Promise<void> {
+  public async clear (): Promise<void> {
     for await (const key of this.keys()) {
       await this.delete(key)
     }
@@ -245,7 +245,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   /**
    * @private
    */
-  public async* entries(options?: IteratorOptions): AsyncIterableIterator<[K, V]> {
+  public async * entries (options?: IteratorOptions): AsyncIterableIterator<[K, V]> {
     log.verbose('FlashStore', '*entries(%s)', JSON.stringify(options))
 
     const iterator = await this.snapDb.getAllIt()
@@ -284,9 +284,9 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
     // }
   }
 
-  public async *[Symbol.asyncIterator](): AsyncIterableIterator<[K, V]> {
+  public async * [Symbol.asyncIterator] (): AsyncIterableIterator<[K, V]> {
     log.verbose('FlashStore', '*[Symbol.asyncIterator]()')
-    yield* this.entries()
+    yield * this.entries()
   }
 
   public async close(): Promise<void> {
@@ -299,11 +299,12 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    *
    * @returns {Promise<void>}
    */
-  public async destroy(): Promise<void> {
+  public async destroy (): Promise<void> {
     log.verbose('FlashStore', 'destroy()')
     await this.snapDb.close()
     await new Promise(resolve => rimraf(this.workdir, resolve))
   }
+
 }
 
 export default FlashStore

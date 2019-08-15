@@ -21,7 +21,7 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
     [id: string]: Promise<void>,
   }
 
-  constructor(
+  constructor (
     public workdir?: string,
   ) {
     log.verbose('CacheStore', 'constructor(%s)', workdir)
@@ -41,14 +41,14 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
 
   }
 
-  private async loadStoreToCache(): Promise<void> {
+  private async loadStoreToCache (): Promise<void> {
     this.cacheMap.clear()
     for await (const [key, val] of this.flashStore) {
       this.cacheMap.set(key, val)
     }
   }
 
-  private asyncBusyAdd(task: Promise<void>): void {
+  private asyncBusyAdd (task: Promise<void>): void {
     this.asyncBusyState.on(true)
 
     const id = cuid()
@@ -62,7 +62,7 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
     })
   }
 
-  public version(): string {
+  public version (): string {
     return this.flashStore.version()
   }
 
@@ -71,63 +71,72 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
    * Async methods:
    *
    */
-  public async close(): Promise<void> {
+  public async close (): Promise<void> {
     await this.ready()
     await this.flashStore.close()
   }
 
-  public async destroy(): Promise<void> {
+  public async destroy (): Promise<void> {
     this.clear()
-    // add destroy task at the end of the event loop
+
+    /**
+     * Add destroy task at the end of the event loop
+     *
+     * We need to not `await` at here
+     * because the destroy() needs to return
+     * without wait any async task
+     */
     this.asyncBusyState.ready('off').then(
       () => this.flashStore.destroy(),
-    )
+    ).catch(e => {
+      log.error('FlashStoreSync', 'destroy() this.flashStore.destroy() rejection: %s',
+        e && e.message
+      )
+    })
   }
 
-  public async ready(): Promise<void> {
+  public async ready (): Promise<void> {
     await this.asyncBusyState.ready('off')
   }
 
-  /////////////////////////////////////////////////////////
-  /**
+  /*******************************************************
    *
    *
    * The following methods is all for ES6 Map Interface
    *
    *
-   */
-  /////////////////////////////////////////////////////////
+   ********************************************************/
 
-  public get size(): number {
+  public get size (): number {
     return this.cacheMap.size
   }
 
-  get [Symbol.toStringTag]() {
+  get [Symbol.toStringTag] () {
     return 'FlashStoreSync' as any as 'Map'
   }
 
-  public [Symbol.iterator]() {
+  public [Symbol.iterator] () {
     return this.cacheMap[Symbol.iterator]()
   }
 
-  public entries() {
+  public entries () {
     return this.cacheMap.entries()
   }
 
-  public keys() {
+  public keys () {
     return this.cacheMap.keys()
   }
 
-  public values() {
+  public values () {
     return this.cacheMap.values()
   }
 
-  public clear(): void {
+  public clear (): void {
     this.asyncBusyAdd(this.flashStore.clear())
     return this.cacheMap.clear()
   }
 
-  public delete(key: K): boolean {
+  public delete (key: K): boolean {
     this.asyncBusyAdd(this.flashStore.delete(key))
     return this.cacheMap.delete(key)
   }
@@ -135,7 +144,7 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
   /**
    * Do not mutate the key/value in the forEach loop!
    */
-  public forEach(callbackfn: (value: V, key: K, map: Map<K, V>) => void, thisArg?: any): void {
+  public forEach (callbackfn: (value: V, key: K, map: Map<K, V>) => void, thisArg?: any): void {
     /**
      * 1. no need to call flashStore
      * 2. callbackfn should not mutate the data, or the data will be lost sync between cache & store
@@ -143,15 +152,15 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
     return this.cacheMap.forEach(callbackfn, thisArg)
   }
 
-  public get(key: K): V | undefined {
+  public get (key: K): V | undefined {
     return this.cacheMap.get(key)
   }
 
-  public has(key: K): boolean {
+  public has (key: K): boolean {
     return this.cacheMap.has(key)
   }
 
-  public set(key: K, value: V): this {
+  public set (key: K, value: V): this {
     this.asyncBusyAdd(this.flashStore.set(key, value))
     this.cacheMap.set(key, value)
     return this

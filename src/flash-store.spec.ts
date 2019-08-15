@@ -51,6 +51,7 @@ test('Store as async iterator', async t => {
   t.test('async iterator for empty store', async t => {
     for await (const store of storeFixture()) {
       let n = 0
+      /* eslint @typescript-eslint/no-unused-vars: off */
       for await (const _ of store) {
         n++
         break
@@ -172,7 +173,7 @@ test.only('close()', async t => {
  * Fixtures
  */
 
-async function* storeFixture() {
+async function * storeFixture () {
   const tmpDir = fs.mkdtempSync(
     path.join(
       os.tmpdir(),

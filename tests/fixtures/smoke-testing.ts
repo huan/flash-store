@@ -1,7 +1,12 @@
 import {
   FlashStore,
   FlashStoreSync,
+  VERSION,
 }                   from 'flash-store'
+
+if (VERSION === '0.0.0') {
+  throw new Error('version should be set befoer publishing')
+}
 
 const store = new FlashStore()
 store.destroy()
@@ -9,4 +14,4 @@ store.destroy()
 const storeSync = new FlashStoreSync()
 storeSync.destroy()
 
-console.log(`Smoke Testing v${store.version()} PASSED!`)
+console.info(`Smoke Testing v${store.version()} PASSED!`)
