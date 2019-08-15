@@ -5,10 +5,6 @@ import {
 }                   from 'app-root-path'
 
 import rimraf     from 'rimraf'
-// import encoding   from 'encoding-down'
-// import leveldown from 'leveldown'
-// import rocksdb    from 'rocksdb'
-// import levelup    from 'levelup'
 import { SnapDB } from 'snap-db'
 
 import {
@@ -20,19 +16,23 @@ import {
   AsyncMap,
 }             from './async-map'
 
-export interface IteratorOptions {
-  gt?      : any,
-  gte?     : any,
-  lt?      : any,
-  lte?     : any,
-  reverse? : boolean,
-  limit?   : number,
+export interface IteratorOptions<K> {
+  gt?      : K
+  gte?     : K
+  lt?      : K
+  lte?     : K
+  reverse? : boolean
 
-  prefix?  : any,
+  keys?   : boolean
+  values? : boolean
+  limit?  : number
+
+  prefix?  : K
 }
 
 export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
-  private snapDb: SnapDB<string>
+
+  private snapDb: SnapDB<K>
 
   /**
    * FlashStore is a Key-Value database tool and makes using leveldb more easy for Node.js
@@ -46,25 +46,14 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   constructor (
     public workdir = path.join(appRoot, '.flash-store'),
   ) {
-    log.verbose('FlashStore', 'constructor()')
+    log.verbose('FlashStore', 'constructor(%s)', workdir)
 
-    // https://twitter.com/juliangruber/status/908688876381892608
-    // const encoded = encoding(
-    //   // leveldown(workdir),
-    //   rocksdb(workdir),
-    //   {
-    //     // FIXME: issue #2
-    //     valueEncoding: 'json',
-    //   },
-    // )
-
-    // this.levelDb = levelup(encoded)
-    // // console.log((this.levelDb)._db.codec)
-    // this.levelDb.setMaxListeners(17)  // default is Infinity
+    // we use seperate workdir for snapdb, leveldb, and rocksdb etc.
+    const snapdbWorkdir = path.join(workdir, 'snapdb')
 
     this.snapDb = new SnapDB({
-      dir: workdir, // database folder
-      key: 'string', // key type, can be "int", "string" or "float"
+      dir: snapdbWorkdir,   // database folder
+      key: 'string',        // key type, can be "int", "string" or "float"
     })
   }
 
@@ -81,9 +70,10 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    * @example
    * await flashStore.set(1, 1)
    */
-  public async set(key: K, value: V): Promise<void> {
+  public async set (key: K, value: V): Promise<void> {
     log.verbose('FlashStore', 'set(%s, %s) value type: %s', key, value, typeof value)
-    // FIXME: string for SnapDB only
+
+    // FIXME(huan): string for SnapDB only
     if (typeof key !== 'string') {
       throw new Error('only support string as key')
     }
@@ -101,7 +91,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   public async get (key: K): Promise<V | undefined> {
     log.verbose('FlashStore', 'get(%s)', key)
     try {
-      // FIXME: string for SnapDB only
+      // FIXME(huan): string for SnapDB only
       if (typeof key !== 'string') {
         throw new Error('only support string as key')
       }
@@ -109,6 +99,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
       return val && JSON.parse(val)
     } catch (e) {
       if (/^NotFoundError/.test(e)) {
+        // The leveldb will throw NotFoundError for non-exist keys
         return undefined
       }
       throw e
@@ -123,9 +114,9 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    * @example
    * await flashStore.delete(1)
    */
-  public async delete(key: K): Promise<void> {
+  public async delete (key: K): Promise<void> {
     log.verbose('FlashStore', 'delete(%s)', key)
-    // FIXME: string for SnapDB only
+    // FIXME(huan): string for SnapDB only
     if (typeof key !== 'string') {
       throw new Error('only support string as key')
     }
@@ -135,13 +126,13 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   /**
    * @typedef IteratorOptions
    *
-   * @property { any }      gt       - Matches values that are greater than a specified value
-   * @property { any }      gte      - Matches values that are greater than or equal to a specified value.
-   * @property { any }      lt       - Matches values that are less than a specified value.
-   * @property { any }      lte      - Matches values that are less than or equal to a specified value.
-   * @property { boolean }  reverse  - Reverse the result set
-   * @property { number }   limit    - Limits the number in the result set.
-   * @property { any }      prefix   - Make the same prefix key get together.
+   * @property { K }        gt        - Matches values that are greater than a specified value
+   * @property { K }        gte       - Matches values that are greater than or equal to a specified value.
+   * @property { K }        lt        - Matches values that are less than a specified value.
+   * @property { K }        lte       - Matches values that are less than or equal to a specified value.
+   * @property { boolean }  reverse   - Reverse the result set
+   * @property { number }   limit     - Limits the number in the result set.
+   * @property { K }        prefix    - Make the same prefix key get together.
    */
 
   /**
@@ -155,23 +146,14 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    *   console.log(key)
    * }
    */
-  public async * keys (options: IteratorOptions = {}): AsyncIterableIterator<K> {
+  public async * keys (options: IteratorOptions<K> = {}): AsyncIterableIterator<K> {
     log.verbose('FlashStore', 'keys()')
 
-    // options = Object.assign(options, {
-    //   keys   : true,
-    //   values : false,
-    // })
-
-    if (options.prefix) {
-      if (options.gte || options.lte) {
-        throw new Error('can not specify `prefix` with `gte`/`lte` together.')
-      }
-      options.gte = options.prefix
-      options.lte = options.prefix + '\xff'
+    const keysOptions = {
+      ...options,
+      values: false,  // do not include values
     }
-
-    for await (const [key] of this.entries(options)) {
+    for await (const [key] of this.entries(keysOptions)) {
       yield key
     }
   }
@@ -186,15 +168,15 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    *   console.log(value)
    * }
    */
-  public async * values (options: IteratorOptions = {}): AsyncIterableIterator<V> {
+  public async * values (options: IteratorOptions<K> = {}): AsyncIterableIterator<V> {
     log.verbose('FlashStore', 'values()')
 
-    // options = Object.assign(options, {
-    //   keys   : false,
-    //   values : true,
-    // })
+    const valuesOptions = {
+      ...options,
+      keys: false,  // do not include the keys
+    }
 
-    for await (const [, value] of this.entries(options)) {
+    for await (const [, value] of this.entries(valuesOptions)) {
       yield value
     }
 
@@ -209,24 +191,11 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    */
   public get size (): Promise<number> {
     log.verbose('FlashStore', 'size()')
-
-    // TODO: is there a better way to count all items from the db?
-    // return new Promise<number>(async (resolve, reject) => {
-    //   try {
-    //     let count = 0
-    //     for await (const _ of this) {
-    //       count++
-    //     }
-    //     resolve(count)
-    //   } catch (e) {
-    //     reject(e)
-    //   }
-    // })
     return this.snapDb.getCount()
   }
 
   /**
-   * FIXME: use better way to do this
+   * FIXME(huan): use better way to do this
    */
   public async has (key: K): Promise<boolean> {
     const val = await this.get(key)
@@ -234,54 +203,26 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   }
 
   /**
-   * TODO: use better way to do this with leveldb
+   *
    */
   public async clear (): Promise<void> {
-    for await (const key of this.keys()) {
-      await this.delete(key)
-    }
+    log.verbose('FlashStore', 'clear()')
+    await this.snapDb.empty()
   }
 
   /**
    * @private
    */
-  public async * entries (options?: IteratorOptions): AsyncIterableIterator<[K, V]> {
+  public async * entries (options?: IteratorOptions<K>): AsyncIterableIterator<[K, V]> {
     log.verbose('FlashStore', '*entries(%s)', JSON.stringify(options))
 
-    const iterator = await this.snapDb.getAllIt()
+    const iterator = await this.snapDb.queryIt(options || {})
 
     for await (const [key, val] of iterator) {
-      const valObj = JSON.parse(val)
-      // FIXME: key has to be string for SnapDB
+      const valObj = val === undefined ? undefined : JSON.parse(val)
+      // FIXME(huan): key has to be string for SnapDB
       yield [key as any, valObj]
     }
-
-    // const iterator = (this.db).db.iterator(options)
-
-    // while (true) {
-    //   const pair = await new Promise<[K, V] | null>((resolve, reject) => {
-    //     iterator.next(function (err: any , key: K, val: V) {
-    //       if (err) {
-    //         reject(err)
-    //       }
-    //       if (!key && !val) {
-    //         return resolve(null)
-    //       }
-    //       if (val) {
-    //         // FIXME: string for SnapDB only
-    //         if (typeof val !== 'string') {
-    //           throw new Error('only support string as val')
-    //         }
-    //         val = JSON.parse(val)
-    //       }
-    //       return resolve([key, val])
-    //     })
-    //   })
-    //   if (!pair) {
-    //     break
-    //   }
-    //   yield pair
-    // }
   }
 
   public async * [Symbol.asyncIterator] (): AsyncIterableIterator<[K, V]> {
@@ -289,7 +230,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
     yield * this.entries()
   }
 
-  public async close(): Promise<void> {
+  public async close (): Promise<void> {
     log.verbose('FlashStore', 'close()')
     await this.snapDb.close()
   }
