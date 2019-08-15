@@ -94,28 +94,20 @@ See [auto generated docs](https://huan.github.io/flash-store)
 
 ### v0.17 master 2019
 
-### v0.16 May 2019
-
-[SnapDB](https://github.com/ClickSimply/snap-db) as Backend.
+### v0.16 May 2019 [SnapDB](https://github.com/ClickSimply/snap-db) as Backend
 
 1. Switch from RocksDB to SnapDB [#45](https://github.com/huan/flash-store/issues/45)
 
-### v0.14 May 2019
-
-[RocksDB](https://www.npmjs.com/package/rocksdb) as Backend.
+### v0.14 May 2019 [RocksDB](https://www.npmjs.com/package/rocksdb) as Backend
 
 1. Switch from LevelDB to RocksDB [#34](https://github.com/huan/flash-store/issues/34)
 
-### v0.12 Jan 2019
-
-[LevelDB](https://github.com/level/leveldown) as Backend.
+### v0.12 Jan 2019 [LevelDB](https://github.com/level/leveldown) as Backend
 
 1. Use [level-down](https://github.com/level/leveldown) as backend to skip the compiling when install.
 1. Using leveldb official typings from `@types/`
 
-### v0.7 Aug 2018
-
-[Nosql-LevelDB](https://github.com/snowyu/node-nosql-leveldb) as Backend.
+### v0.7 Aug 2018 [Nosql-LevelDB](https://github.com/snowyu/node-nosql-leveldb) as Backend
 
 1. Use [nosql-leveldb](https://github.com/snowyu/node-nosql-leveldb) as backend to prevent segfault.
 
