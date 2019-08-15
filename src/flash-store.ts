@@ -5,10 +5,11 @@ import {
 }                   from 'app-root-path'
 
 import rimraf     from 'rimraf'
-import encoding   from 'encoding-down'
+// import encoding   from 'encoding-down'
 // import leveldown from 'leveldown'
-import rocksdb    from 'rocksdb'
-import levelup    from 'levelup'
+// import rocksdb    from 'rocksdb'
+// import levelup    from 'levelup'
+import { SnapDB } from 'snap-db'
 
 import {
   log,
@@ -30,8 +31,8 @@ export interface IteratorOptions {
   prefix?  : any,
 }
 
-export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
-  private levelDb: any
+export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
+  private snapDb: SnapDB<string>
 
   /**
    * FlashStore is a Key-Value database tool and makes using leveldb more easy for Node.js
@@ -48,18 +49,23 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
     log.verbose('FlashStore', 'constructor()')
 
     // https://twitter.com/juliangruber/status/908688876381892608
-    const encoded = encoding(
-      // leveldown(workdir),
-      rocksdb(workdir),
-      {
-        // FIXME: issue #2
-        valueEncoding: 'json',
-      },
-    )
+    // const encoded = encoding(
+    //   // leveldown(workdir),
+    //   rocksdb(workdir),
+    //   {
+    //     // FIXME: issue #2
+    //     valueEncoding: 'json',
+    //   },
+    // )
 
-    this.levelDb = levelup(encoded)
-    // console.log((this.levelDb as any)._db.codec)
-    this.levelDb.setMaxListeners(17)  // default is Infinity
+    // this.levelDb = levelup(encoded)
+    // // console.log((this.levelDb)._db.codec)
+    // this.levelDb.setMaxListeners(17)  // default is Infinity
+
+    this.snapDb = new SnapDB({
+      dir: workdir, // database folder
+      key: 'string', // key type, can be "int", "string" or "float"
+    })
   }
 
   public version(): string {
@@ -67,23 +73,21 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
   }
 
   /**
-   * Put data in database
+   * Set data in database
    *
    * @param {K} key
    * @param {V} value
    * @returns {Promise<void>}
    * @example
-   * await flashStore.put(1, 1)
+   * await flashStore.set(1, 1)
    */
-  public async put(key: K, value: V): Promise<void> {
-    log.warn('FlashStore', '`put()` DEPRECATED. use `set()` instead.')
-    await this.set(key, value)
-  }
-
   public async set(key: K, value: V): Promise<void> {
     log.verbose('FlashStore', 'set(%s, %s) value type: %s', key, value, typeof value)
-    // FIXME: issue #2
-    await this.levelDb.put(key, JSON.stringify(value) as any)
+    // FIXME: string for SnapDB only
+    if (typeof key !== 'string') {
+      throw new Error('only support string as key')
+    }
+    await this.snapDb.put(key, JSON.stringify(value))
   }
 
   /**
@@ -97,8 +101,12 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
   public async get(key: K): Promise<V | undefined> {
     log.verbose('FlashStore', 'get(%s)', key)
     try {
-      // FIXME: issue #2
-      return JSON.parse(await this.levelDb.get(key) as any)
+      // FIXME: string for SnapDB only
+      if (typeof key !== 'string') {
+        throw new Error('only support string as key')
+      }
+      const val = await this.snapDb.get(key)
+      return val && JSON.parse(val)
     } catch (e) {
       if (/^NotFoundError/.test(e)) {
         return undefined
@@ -113,16 +121,15 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    * @param {K} key
    * @returns {Promise<void>}
    * @example
-   * await flashStore.del(1)
+   * await flashStore.delete(1)
    */
-  public async del(key: K): Promise<void> {
-    log.verbose('FlashStore', '`del()` DEPRECATED. use `delete()` instead')
-    await this.delete(key)
-  }
-
   public async delete(key: K): Promise<void> {
     log.verbose('FlashStore', 'delete(%s)', key)
-    await this.levelDb.del(key)
+    // FIXME: string for SnapDB only
+    if (typeof key !== 'string') {
+      throw new Error('only support string as key')
+    }
+    await this.snapDb.delete(key)
   }
 
   /**
@@ -194,34 +201,28 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
   }
 
   /**
-   * Get the counts of the database
-   * @deprecated use property `size` instead
+   * Get the size of the database
    * @returns {Promise<number>}
    * @example
-   * const count = await flashStore.count()
-   * console.log(`database count: ${count}`)
+   * const size = await flashStore.size
+   * console.log(`database size: ${size}`)
    */
-  public async count(): Promise<number> {
-    log.warn('FlashStore', '`count()` DEPRECATED. use `size()` instead.')
-    const size = await this.size
-    return size
-  }
-
   public get size(): Promise<number> {
     log.verbose('FlashStore', 'size()')
 
     // TODO: is there a better way to count all items from the db?
-    return new Promise<number>(async (resolve, reject) => {
-      try {
-        let count = 0
-        for await (const _ of this) {
-          count++
-        }
-        resolve(count)
-      } catch (e) {
-        reject(e)
-      }
-    })
+    // return new Promise<number>(async (resolve, reject) => {
+    //   try {
+    //     let count = 0
+    //     for await (const _ of this) {
+    //       count++
+    //     }
+    //     resolve(count)
+    //   } catch (e) {
+    //     reject(e)
+    //   }
+    // })
+    return this.snapDb.getCount()
   }
 
   /**
@@ -247,29 +248,40 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
   public async* entries(options?: IteratorOptions): AsyncIterableIterator<[K, V]> {
     log.verbose('FlashStore', '*entries(%s)', JSON.stringify(options))
 
-    const iterator = (this.levelDb as any).db.iterator(options)
+    const iterator = await this.snapDb.getAllIt()
 
-    while (true) {
-      const pair = await new Promise<[K, V] | null>((resolve, reject) => {
-        iterator.next(function (err: any , key: K, val: V) {
-          if (err) {
-            reject(err)
-          }
-          if (!key && !val) {
-            return resolve(null)
-          }
-          if (val) {
-            // FIXME: issue #2
-            val = JSON.parse(val as any)
-          }
-          return resolve([key, val])
-        })
-      })
-      if (!pair) {
-        break
-      }
-      yield pair
+    for await (const [key, val] of iterator) {
+      const valObj = JSON.parse(val)
+      // FIXME: key has to be string for SnapDB
+      yield [key as any, valObj]
     }
+
+    // const iterator = (this.db).db.iterator(options)
+
+    // while (true) {
+    //   const pair = await new Promise<[K, V] | null>((resolve, reject) => {
+    //     iterator.next(function (err: any , key: K, val: V) {
+    //       if (err) {
+    //         reject(err)
+    //       }
+    //       if (!key && !val) {
+    //         return resolve(null)
+    //       }
+    //       if (val) {
+    //         // FIXME: string for SnapDB only
+    //         if (typeof val !== 'string') {
+    //           throw new Error('only support string as val')
+    //         }
+    //         val = JSON.parse(val)
+    //       }
+    //       return resolve([key, val])
+    //     })
+    //   })
+    //   if (!pair) {
+    //     break
+    //   }
+    //   yield pair
+    // }
   }
 
   public async *[Symbol.asyncIterator](): AsyncIterableIterator<[K, V]> {
@@ -277,43 +289,9 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
     yield* this.entries()
   }
 
-  /**
-   * @private
-   */
-  public async *streamAsyncIterator(): AsyncIterator<[K, V]> {
-    log.warn('FlashStore', 'DEPRECATED *[Symbol.asyncIterator]()')
-
-    const readStream = this.levelDb.createReadStream()
-
-    const endPromise = new Promise<false>((resolve, reject) => {
-      readStream
-        .once('end',  () => resolve(false))
-        .once('error', reject)
-    })
-
-    let pair: [K, V] | false
-
-    do {
-      const dataPromise = new Promise<[K, V]>(resolve => {
-        readStream.once('data', (data: any) => resolve([data.key, data.value]))
-      })
-
-      pair = await Promise.race([
-        dataPromise,
-        endPromise,
-      ])
-
-      if (pair) {
-        yield pair
-      }
-
-    } while (pair)
-
-  }
-
   public async close(): Promise<void> {
     log.verbose('FlashStore', 'close()')
-    await this.levelDb.close()
+    await this.snapDb.close()
   }
 
   /**
@@ -323,7 +301,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    */
   public async destroy(): Promise<void> {
     log.verbose('FlashStore', 'destroy()')
-    await this.levelDb.close()
+    await this.snapDb.close()
     await new Promise(resolve => rimraf(this.workdir, resolve))
   }
 }

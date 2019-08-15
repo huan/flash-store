@@ -75,7 +75,7 @@ test('Store as async iterator', async t => {
 })
 
 test('async get()', async t => {
-  t.test('return null for non existing key', async t => {
+  t.test('return undefined for non existing key', async t => {
     for await (const store of storeFixture()) {
       const val = await store.get(KEY)
       t.equal(val, undefined, 'should get undefined for not exist key')
@@ -152,34 +152,25 @@ test('async values()', async t => {
   }
 })
 
-// test('deferred-leveldown json bug(fixed on version 2.0.2', async t => {
-//   const encoding  = (await import('encoding-down')).default
-//   const leveldown = (await import('leveldown')).default
-//   const levelup   = (await import('levelup')).default
+test.only('close()', async t => {
+  for await (const store of storeFixture()) {
+    console.info('HERE')
+    t.pass('there')
+    try {
+      await store.close()
+      await store.close()
+      console.info('wtf')
+      t.pass('close() can be invoked more than one times')
+    } catch (e) {
+      console.info('wtf?')
+      t.fail(e)
+    }
+  }
+})
 
-//   const tmpDir = fs.mkdtempSync(
-//     path.join(
-//       os.tmpdir(),
-//       path.sep,
-//       'flash-store-',
-//     ),
-//   )
-
-//   const encoded = encoding(leveldown(tmpDir) as any, {
-//     valueEncoding: 'json',
-//   })
-//   const levelDb = levelup(encoded)
-
-//   const EXPECTED_OBJ = {a: 1}
-//   await levelDb.put('test', EXPECTED_OBJ)
-//   const value = await levelDb.get('test')
-
-//   t.equal(typeof value, 'object', 'value type should be object')
-//   t.deepEqual(value, EXPECTED_OBJ, 'should get back the original object')
-
-//   // `rm -fr tmpDir`
-//   await new Promise(r => rimraf(tmpDir, r))
-// })
+/**
+ * Fixtures
+ */
 
 async function* storeFixture() {
   const tmpDir = fs.mkdtempSync(
