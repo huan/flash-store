@@ -77,6 +77,10 @@ FlashStoreSync implments the Standard ES6 Map API:
 class FlashStoreSync<K, V> implments Map<K, V> {}
 ```
 
+1. You get a sync API at the cost of all your data have to be kept in memory.
+1. The data will be writen back to disk for persistant storage in async.
+1. The performance of `FlashStoreSync` can be expected high because it's in memory.
+
 ## DOCUMENT
 
 See [auto generated docs](https://huan.github.io/flash-store)
