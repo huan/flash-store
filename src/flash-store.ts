@@ -17,17 +17,18 @@ import {
 }             from './async-map'
 
 export interface IteratorOptions<K> {
-  gt?      : K
-  gte?     : K
-  lt?      : K
-  lte?     : K
-  reverse? : boolean
+  gt?  : K
+  gte? : K
+  lt?  : K
+  lte? : K
+
+  offset? : number
+  limit?  : number
 
   keys?   : boolean
   values? : boolean
-  limit?  : number
 
-  prefix?  : K
+  reverse?: boolean
 }
 
 export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
@@ -72,11 +73,6 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    */
   public async set (key: K, value: V): Promise<void> {
     log.verbose('FlashStore', 'set(%s, %s) value type: %s', key, value, typeof value)
-
-    // FIXME(huan): string for SnapDB only
-    if (typeof key !== 'string') {
-      throw new Error('only support string as key')
-    }
     await this.snapDb.put(key, JSON.stringify(value))
   }
 
@@ -91,10 +87,6 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   public async get (key: K): Promise<V | undefined> {
     log.verbose('FlashStore', 'get(%s)', key)
     try {
-      // FIXME(huan): string for SnapDB only
-      if (typeof key !== 'string') {
-        throw new Error('only support string as key')
-      }
       const val = await this.snapDb.get(key)
       return val && JSON.parse(val)
     } catch (e) {
@@ -116,10 +108,6 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    */
   public async delete (key: K): Promise<void> {
     log.verbose('FlashStore', 'delete(%s)', key)
-    // FIXME(huan): string for SnapDB only
-    if (typeof key !== 'string') {
-      throw new Error('only support string as key')
-    }
     await this.snapDb.delete(key)
   }
 
@@ -194,12 +182,8 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
     return this.snapDb.getCount()
   }
 
-  /**
-   * FIXME(huan): use better way to do this
-   */
   public async has (key: K): Promise<boolean> {
-    const val = await this.get(key)
-    return !!val
+    return this.snapDb.exists(key)
   }
 
   /**
@@ -220,8 +204,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
 
     for await (const [key, val] of iterator) {
       const valObj = val === undefined ? undefined : JSON.parse(val)
-      // FIXME(huan): key has to be string for SnapDB
-      yield [key as any, valObj]
+      yield [key, valObj]
     }
   }
 
