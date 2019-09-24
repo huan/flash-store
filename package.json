@@ -39,7 +39,7 @@
     "brolog": "^1.2.6",
     "cuid": "^2.1.1",
     "rimraf": "^3.0.0",
-    "snap-db": "^1.1.5",
+    "snap-db": "^1.1.6",
     "state-switch": "^0.6.2"
   },
   "devDependencies": {
