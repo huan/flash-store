@@ -49,7 +49,7 @@
     "@chatie/tsconfig": "^0.6.1",
     "@types/app-root-path": "^1.2.4",
     "@types/blue-tape": "^0.1.31",
-    "@types/node": "^13.1.0",
+    "@types/node": "^13.5.1",
     "@types/rimraf": "^2.0.2",
     "@types/sinon": "^7.5.0",
     "@types/semver": "^7.1.0",
