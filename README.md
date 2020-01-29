@@ -35,7 +35,7 @@ import { FlashStore } from 'flash-store'
 
 const flashStore = new FlashStore('flashstore.workdir')
 
-await flashStore.put(1, 'a')
+await flashStore.set(1, 'a')
 console.log(`key: 1, value: ${await flashStore.get(1)}`)
 // Output: 'a'
 

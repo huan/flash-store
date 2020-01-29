@@ -105,6 +105,16 @@ test('async set()', async t => {
   }
 })
 
+test('set the same key more than one time, and the size should be 1', async t => {
+  for await (const store of storeFixture()) {
+    await store.set(KEY, VAL)
+    await store.set(KEY, VAL)
+    await store.set(KEY, VAL)
+    const size = await store.size
+    t.equal(size, 1, 'the size should be 1')
+  }
+})
+
 test('async size()', async t => {
   for await (const store of storeFixture()) {
     let size = await store.size
