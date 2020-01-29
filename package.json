@@ -64,7 +64,7 @@
     "ts-node": "^8.0.3",
     "tslint": "^5.10.0",
     "typescript": "^3.0.1",
-    "tstest": "^0.4.2"
+    "tstest": "^0.4.9"
   },
   "files": [
     "package.json",
