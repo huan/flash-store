@@ -164,6 +164,6 @@ Long answer:
 
 ## COPYRIGHT & LICENSE
 
-* Code & Docs © 2017-2019 Huan LI \<zixia@zixia.net\>
+* Code & Docs © 2017-now Huan (李卓桓) \<zixia@zixia.net\>
 * Code released under the Apache-2.0 License
 * Docs released under Creative Commons
