@@ -100,7 +100,7 @@ See [auto generated docs](https://huan.github.io/flash-store)
 
 ### master
 
-### v0.18 Feb 2019
+### v0.18 Feb 2019 - Medea as Backend
 
 1. Switch from SnapDB to [MedeaDown](https://github.com/medea/medeadown)
 
