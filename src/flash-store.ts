@@ -198,7 +198,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    * @private
    */
   public async * entries (options?: IteratorOptions<K>): AsyncIterableIterator<[K, V]> {
-    log.verbose('FlashStore', '*entries(%s)', JSON.stringify(options))
+    log.verbose('FlashStore', '*entries(%s)', options ? JSON.stringify(options) : '')
 
     const iterator = await this.snapDb.queryIt(options || {})
 
