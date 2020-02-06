@@ -1,4 +1,4 @@
-# FLASH-STORE
+# flash-store
 
 [![Powered by LevelDB](https://img.shields.io/badge/Powered%20By-LevelDB-green.svg)](https://leveldb.org/)
 [![Powered by RocksDB](https://img.shields.io/badge/Powered%20By-RocksDB-green.svg)](https://rocksdb.org/)
@@ -15,11 +15,11 @@ FlashStore is Key-Value persistent storage with easy to use ES6 Map-like API(bot
 
 ![flash store](https://huan.github.io/flash-store/images/flash-store.png)
 
-## REQUIRES
+## Requirements
 
 1. Node.js v10 or above
 
-## EXAMPLES
+## Examples
 
 Try the following command
 
@@ -83,20 +83,20 @@ class FlashStoreSync<K, V> implments Map<K, V> {}
 1. The data will be async writting back to disk for persistant storage in background.
 1. The performance of `FlashStoreSync` can be expected high because it's all in memory.
 
-## DOCUMENT
+## Document
 
 See [auto generated docs](https://huan.github.io/flash-store)
 
 * [ECMAScript 6: Maps - 2ality – JavaScript and more](http://2ality.com/2015/01/es6-maps-sets.html)
 
-## SEE ALSO
+## See Also
 
 1. [Node.js databases: an embedded database using LevelDB](https://blog.yld.io/2016/10/24/node-js-databases-an-embedded-database-using-leveldb)
 2. [How to Cook a Graph Database in a Night - LevelGraph](http://nodejsconfit.levelgraph.io/)
 3. [Graph database JS style for Node.js and the Browser. Built upon LevelUp and LevelDB.](https://github.com/levelgraph/levelgraph)
 4. [浅析 Bigtable 和 LevelDB 的实现](http://draveness.me/bigtable-leveldb.html)
 
-## CHANGELOG
+## Version History
 
 ### master
 
@@ -168,13 +168,13 @@ Long answer:
 
 `memory-card` is using a local file to store data in JSON format by default, however, it supports more distributed methods. Learn more from it's repository at [here](https://github.com/huan/memory-card)
 
-## AUTHOR
+## Author
 
 [Huan LI](https://github.com/huan) ([李卓桓](http://linkedin.com/in/zixia)) zixia@zixia.net
 
 [![Profile of Huan LI (李卓桓) on StackOverflow](https://stackexchange.com/users/flair/265499.png)](https://stackexchange.com/users/265499)
 
-## COPYRIGHT & LICENSE
+## Copyright & License
 
 * Code & Docs © 2017-now Huan (李卓桓) \<zixia@zixia.net\>
 * Code released under the Apache-2.0 License
