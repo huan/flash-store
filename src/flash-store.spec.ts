@@ -178,6 +178,24 @@ test('close() twice', async t => {
   // console.info('haha')
 })
 
+test('first time size', async t => {
+  for await (const store of storeFixture()) {
+    try {
+      const workdir = store.workdir
+      await store.set('foo', 'bar')
+      await store.close()
+
+      const oldStore = new FlashStore(workdir)
+      t.equal(await oldStore.size, 1, 'should get size 1 after re-open a old store.')
+    } catch (e) {
+    // console.info('wtf?', e || 'rejection')
+      t.fail(e || 'rejection')
+    }
+  }
+  // t.pass('end')
+  // console.info('haha')
+})
+
 /**
  * Fixtures
  */

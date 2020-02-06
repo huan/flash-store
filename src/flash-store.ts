@@ -208,7 +208,16 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   public get size (): Promise<number> {
     log.verbose('FlashStore', 'size()')
 
-    return Promise.resolve(this.medeaKeyDir.size)
+    let future = Promise.resolve() as any
+
+    /**
+     * the size will be zero if there's never a put/get operation
+     *  because I guess that it was lazy initialized.
+     */
+    if (this.medeaKeyDir.size === 0) {
+      future = future.then(() => this.get('foobar' as any))
+    }
+    return future.then(() => this.medeaKeyDir.size)
 
     // // TODO: is there a better way to count all items from the db?
     // return new Promise<number>(async (resolve, reject) => {
