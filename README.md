@@ -104,6 +104,14 @@ See [auto generated docs](https://huan.github.io/flash-store)
 
 1. Switch from SnapDB to [MedeaDown](https://github.com/medea/medeadown)
 
+[Medea](https://github.com/medea/medea) is a persistent key-value storage library that runs everywhere Node runs.
+
+> "It is a pure JS implementation of leveldown and it's almost as fast."
+> &mdash; @Raynos [link](https://github.com/medea/medeadown/issues/2#issue-38431966)  
+>  
+> "The LevelDOWN-compatible wrapper for Medea really opens up the possibility to reuse the modules that have already been created around the LevelUP ecosystem."
+> &mdash; @kevinswiber [link](https://github.com/medea/medeadown/issues/2#issuecomment-49785861)
+
 ### v0.16 May 2019 - SnapDB as Backend
 
 1. Switch from RocksDB to [SnapDB](https://github.com/ClickSimply/snap-db) [#45](https://github.com/huan/flash-store/issues/45)
