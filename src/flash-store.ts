@@ -1,4 +1,5 @@
-import * as path  from 'path'
+import path  from 'path'
+import fs from 'fs'
 
 import {
   path as appRoot,
@@ -43,12 +44,20 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    * const flashStore = new FlashStore('flashstore.workdir')
    */
   constructor (
-    public workdir = path.join(appRoot, '.flash-store'),
+    public workdir?: string,
   ) {
+
+    if (!this.workdir) {
+      this.workdir = path.join(appRoot, '.flash-store')
+      if (!fs.existsSync(this.workdir)) {
+        fs.mkdirSync(this.workdir)
+      }
+    }
+
     log.verbose('FlashStore', 'constructor(%s)', workdir)
 
     // we use seperate workdir for snapdb, leveldb, and rocksdb etc.
-    const medeaWorkdir = path.join(workdir, 'medea')
+    const medeaWorkdir = path.join(this.workdir, 'medea')
 
     // https://twitter.com/juliangruber/status/908688876381892608
     const encoded = encoding(
@@ -310,7 +319,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   public async destroy (): Promise<void> {
     log.verbose('FlashStore', 'destroy()')
     await this.levelDb.close()
-    await new Promise(resolve => rimraf(this.workdir, resolve))
+    await new Promise(resolve => rimraf(this.workdir!, resolve))
   }
 
 }
