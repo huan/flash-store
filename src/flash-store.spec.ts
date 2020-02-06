@@ -106,7 +106,7 @@ test('async set()', async t => {
 })
 
 // TODO: wait https://github.com/ClickSimply/snap-db/pull/12
-test.skip('set the same key more than one time, and the size should be 1', async t => {
+test('set the same key more than one time, and the size should be 1', async t => {
   for await (const store of storeFixture()) {
     await store.set(KEY, VAL)
     await store.set(KEY, VAL)
@@ -161,12 +161,12 @@ test('async values()', async t => {
   }
 })
 
-test.skip('close() twice', async t => {
+test('close() twice', async t => {
   // https://github.com/ClickSimply/snap-db/issues/10
   for await (const store of storeFixture()) {
     try {
       await store.close()
-      // await store.close()
+      await store.close()
       // console.info(store)
       t.pass('close() can be invoked more than one times')
     } catch (e) {

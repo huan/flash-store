@@ -98,7 +98,11 @@ See [auto generated docs](https://huan.github.io/flash-store)
 
 ## CHANGELOG
 
-### v0.17 master 2019
+### master
+
+### v0.18 Feb 2019
+
+1. Switch from SnapDB to [MedeaDown](https://github.com/medea/medeadown)
 
 ### v0.16 May 2019 - SnapDB as Backend
 

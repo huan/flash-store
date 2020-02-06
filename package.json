@@ -1,6 +1,6 @@
 {
   "name": "flash-store",
-  "version": "0.16.14",
+  "version": "0.18.0",
   "description": "FlashStore is a Key-Value persistent storage with easy to use ES6 Map-like API(both Async and Sync support), powered by LevelDB and TypeScript.",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -26,6 +26,7 @@
     "leveldb",
     "rocksdb",
     "snapdb",
+    "medea",
     "nosql",
     "database"
   ],
@@ -39,8 +40,10 @@
     "app-root-path": "^3.0.0",
     "brolog": "^1.2.6",
     "cuid": "^2.1.1",
+    "encoding-down": "^6.3.0",
+    "levelup": "^4.3.2",
+    "medeadown": "^1.1.9",
     "rimraf": "^3.0.0",
-    "snap-db": "^1.1.6",
     "state-switch": "^0.6.2"
   },
   "devDependencies": {
@@ -49,20 +52,12 @@
     "@chatie/semver": "^0.4.7",
     "@chatie/tsconfig": "^0.6.1",
     "@types/app-root-path": "^1.2.4",
-    "@types/blue-tape": "^0.1.31",
-    "@types/node": "^13.5.1",
+    "@types/encoding-down": "^5.0.0",
+    "@types/levelup": "^4.3.0",
     "@types/rimraf": "^2.0.2",
-    "@types/sinon": "^7.5.0",
-    "@types/semver": "^7.1.0",
-    "blue-tape": "^1.0.0",
-    "git-scripts": "git+https://github.com/nkzawa/git-scripts.git",
     "pkg-jq": "^0.2.2",
     "shx": "^0.3.2",
-    "sinon": "^8.0.0",
-    "sinon-test": "^2.1.1",
     "ts-node": "^8.4.1",
-    "tslint": "^5.10.0",
-    "typescript": "^3.0.1",
     "tstest": "^0.4.9"
   },
   "files": [
