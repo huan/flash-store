@@ -33,6 +33,7 @@ export interface IteratorOptions {
 export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
 
   private levelDb: any
+  private medeaKeyDir: Map<any, any>
 
   /**
    * FlashStore is a Key-Value database tool and makes using leveldb more easy for Node.js
@@ -59,10 +60,13 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
     // we use seperate workdir for snapdb, leveldb, and rocksdb etc.
     const medeaWorkdir = path.join(this.workdir, 'medea')
 
+    const medeaDown = MedeaDown(medeaWorkdir)
+    this.medeaKeyDir = medeaDown.db.keydir
+
     // https://twitter.com/juliangruber/status/908688876381892608
     const encoded = encoding(
       // leveldown(workdir),
-      MedeaDown(medeaWorkdir),
+      medeaDown,
       {
         // FIXME: issue #2
         valueEncoding: 'json',
@@ -204,18 +208,20 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   public get size (): Promise<number> {
     log.verbose('FlashStore', 'size()')
 
-    // TODO: is there a better way to count all items from the db?
-    return new Promise<number>(async (resolve, reject) => {
-      try {
-        let count = 0
-        for await (const _ of this) {
-          count++
-        }
-        resolve(count)
-      } catch (e) {
-        reject(e)
-      }
-    })
+    return Promise.resolve(this.medeaKeyDir.size)
+
+    // // TODO: is there a better way to count all items from the db?
+    // return new Promise<number>(async (resolve, reject) => {
+    //   try {
+    //     let count = 0
+    //     for await (const _ of this) {
+    //       count++
+    //     }
+    //     resolve(count)
+    //   } catch (e) {
+    //     reject(e)
+    //   }
+    // })
   }
 
   /**
