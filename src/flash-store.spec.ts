@@ -196,6 +196,27 @@ test('first time size', async t => {
   // console.info('haha')
 })
 
+// To be fixed: https://github.com/huan/flash-store/issues/4
+test('values({ optioin: gte/lte })', async t => {
+  for await (const store of storeFixture()) {
+    try {
+      await store.set('a', 3)
+      await store.set('b', 5)
+
+      for await (const value of store.values({ gte: 4 })) {
+        t.equal(value, 5, 'gte 4 should get 5')
+      }
+
+      for await (const value of store.values({ lte: 4 })) {
+        t.equal(value, 4, 'lte 4 should get 4')
+      }
+
+    } catch (e) {
+      t.fail(e || 'rejection')
+    }
+  }
+})
+
 /**
  * Fixtures
  */
