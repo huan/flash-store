@@ -197,7 +197,7 @@ test('first time size', async t => {
 })
 
 // To be fixed: https://github.com/huan/flash-store/issues/4
-test('values({ optioin: gte/lte })', async t => {
+test.skip('values({ optioin: gte/lte })', async t => {
   for await (const store of storeFixture()) {
     try {
       await store.set('a', 3)
