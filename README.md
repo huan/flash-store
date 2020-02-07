@@ -96,7 +96,7 @@ See [auto generated docs](https://huan.github.io/flash-store)
 3. [Graph database JS style for Node.js and the Browser. Built upon LevelUp and LevelDB.](https://github.com/levelgraph/levelgraph)
 4. [浅析 Bigtable 和 LevelDB 的实现](http://draveness.me/bigtable-leveldb.html)
 
-## Knowned Issues
+## Known Issues
 
 1. The `gte` and `lte` in `options` do not work property. ([#4](https://github.com/huan/flash-store/issues/4))
 
