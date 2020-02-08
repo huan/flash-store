@@ -217,6 +217,32 @@ test.skip('values({ optioin: gte/lte })', async t => {
   }
 })
 
+test('create workdir if it is not exist', async t => {
+  const tmpDir = fs.mkdtempSync(
+    path.join(
+      os.tmpdir(),
+      path.sep,
+      'flash-store-',
+    ),
+  )
+
+  const notExistWorkDir = path.join(
+    tmpDir,
+    'not-exist-dir',
+  )
+  const store = new FlashStore(notExistWorkDir)
+
+  const KEY = 'life'
+  const VAL = 42
+
+  await store.set(KEY, VAL)
+  const val = await store.get(KEY)
+
+  t.equal(val, VAL, 'should work without problem with a not existing workdir by creating it automatically.')
+
+  await store.destroy()
+})
+
 /**
  * Fixtures
  */
