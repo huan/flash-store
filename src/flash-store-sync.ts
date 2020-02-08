@@ -34,9 +34,6 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
 
     if (!this.workdir) {
       this.workdir = path.join(appRoot, '.flash-store-sync')
-      if (!fs.existsSync(this.workdir)) {
-        fs.mkdirSync(this.workdir)
-      }
     }
 
     this.asyncBusyDict = {}
@@ -49,7 +46,6 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
     this.flashStore = new FlashStore<K, V>(this.workdir)
 
     this.asyncBusyAdd(this.loadStoreToCache())
-
   }
 
   private async loadStoreToCache (): Promise<void> {

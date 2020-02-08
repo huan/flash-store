@@ -50,12 +50,23 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
 
     if (!this.workdir) {
       this.workdir = path.join(appRoot, '.flash-store')
-      if (!fs.existsSync(this.workdir)) {
-        fs.mkdirSync(this.workdir)
-      }
     }
 
-    log.verbose('FlashStore', 'constructor(%s)', workdir)
+    if (fs.existsSync(this.workdir)) {
+      log.verbose('FlashStore', 'constructor(%s)', workdir)
+    } else {
+      /**
+        * Mkdir for the database directory. (only for the last path, no recursive)
+        */
+      log.silly('FlashStore', 'constructor(%s) not exist, creating...', this.workdir)
+      try {
+        fs.mkdirSync(this.workdir)
+      } catch (e) {
+        log.error('FlashStore', 'constructor(%s) exception: %s', this.workdir, e && e.message)
+        throw e
+      }
+      log.silly('FlashStore', 'constructor(%s) workdir created.', this.workdir)
+    }
 
     // we use seperate workdir for snapdb, leveldb, and rocksdb etc.
     const medeaWorkdir = path.join(this.workdir, 'medea')
