@@ -50,7 +50,7 @@
     "@chatie/eslint-config": "^0.8.1",
     "@chatie/git-scripts": "^0.2.5",
     "@chatie/semver": "^0.4.7",
-    "@chatie/tsconfig": "^0.6.1",
+    "@chatie/tsconfig": "^0.8.0",
     "@types/app-root-path": "^1.2.4",
     "@types/encoding-down": "^5.0.0",
     "@types/levelup": "^4.3.0",
