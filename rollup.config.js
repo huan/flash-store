@@ -1,4 +1,4 @@
-import json from 'rollup-plugin-json'
+import json from '@rollup/plugin-json'
 
 export default {
   input: 'dist/src/index.js',
