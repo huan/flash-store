@@ -103,7 +103,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    * await flashStore.set(1, 1)
    */
   public async set (key: K, value: V): Promise<void> {
-    log.verbose('FlashStore', 'set(%s, %s) value type: %s', key, value, typeof value)
+    log.verbose('FlashStore', 'set(%s, %s) value type: %s', key, JSON.stringify(value), typeof value)
     await this.levelDb.put(key, JSON.stringify(value))
   }
 
