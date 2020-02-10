@@ -15,7 +15,7 @@ npm install *-*.*.*.tgz \
   @chatie/tsconfig
 
 ./node_modules/.bin/tsc \
-  --lib esnext,dom \
+  --lib esnext \
   --noEmitOnError \
   --noImplicitAny \
   smoke-testing.ts

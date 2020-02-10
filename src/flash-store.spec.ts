@@ -105,6 +105,7 @@ test('async set()', async t => {
   }
 })
 
+// TODO: wait https://github.com/ClickSimply/snap-db/pull/12
 test('set the same key more than one time, and the size should be 1', async t => {
   for await (const store of storeFixture()) {
     await store.set(KEY, VAL)
@@ -160,12 +161,12 @@ test('async values()', async t => {
   }
 })
 
-test.skip('close() twice', async t => {
+test('close() twice', async t => {
   // https://github.com/ClickSimply/snap-db/issues/10
   for await (const store of storeFixture()) {
     try {
       await store.close()
-      // await store.close()
+      await store.close()
       // console.info(store)
       t.pass('close() can be invoked more than one times')
     } catch (e) {
@@ -175,6 +176,71 @@ test.skip('close() twice', async t => {
   }
   // t.pass('end')
   // console.info('haha')
+})
+
+test('first time size', async t => {
+  for await (const store of storeFixture()) {
+    try {
+      const workdir = store.workdir
+      await store.set('foo', 'bar')
+      await store.close()
+
+      const oldStore = new FlashStore(workdir)
+      t.equal(await oldStore.size, 1, 'should get size 1 after re-open a old store.')
+    } catch (e) {
+    // console.info('wtf?', e || 'rejection')
+      t.fail(e || 'rejection')
+    }
+  }
+  // t.pass('end')
+  // console.info('haha')
+})
+
+// To be fixed: https://github.com/huan/flash-store/issues/4
+test.skip('values({ optioin: gte/lte })', async t => {
+  for await (const store of storeFixture()) {
+    try {
+      await store.set('a', 3)
+      await store.set('b', 5)
+
+      for await (const value of store.values({ gte: 4 })) {
+        t.equal(value, 5, 'gte 4 should get 5')
+      }
+
+      for await (const value of store.values({ lte: 4 })) {
+        t.equal(value, 4, 'lte 4 should get 4')
+      }
+
+    } catch (e) {
+      t.fail(e || 'rejection')
+    }
+  }
+})
+
+test('create workdir if it is not exist', async t => {
+  const tmpDir = fs.mkdtempSync(
+    path.join(
+      os.tmpdir(),
+      path.sep,
+      'flash-store-',
+    ),
+  )
+
+  const notExistWorkDir = path.join(
+    tmpDir,
+    'not-exist-dir',
+  )
+  const store = new FlashStore(notExistWorkDir)
+
+  const KEY = 'life'
+  const VAL = 42
+
+  await store.set(KEY, VAL)
+  const val = await store.get(KEY)
+
+  t.equal(val, VAL, 'should work without problem with a not existing workdir by creating it automatically.')
+
+  await store.destroy()
 })
 
 /**

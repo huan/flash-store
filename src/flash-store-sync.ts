@@ -1,3 +1,8 @@
+import path from 'path'
+
+import {
+  path as appRoot,
+}                   from 'app-root-path'
 import cuid from 'cuid'
 import {
   StateSwitch,
@@ -26,19 +31,20 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
   ) {
     log.verbose('CacheStore', 'constructor(%s)', workdir)
 
-    workdir = workdir || '.flash-store-sync'
+    if (!this.workdir) {
+      this.workdir = path.join(appRoot, '.flash-store-sync')
+    }
 
     this.asyncBusyDict = {}
     this.asyncBusyState   = new StateSwitch(
-      'Busy:' + workdir.split('/').pop(), // get the latest folder name
+      'Busy:' + this.workdir.split('/').pop(), // get the latest folder name
       log,
     )
 
     this.cacheMap   = new Map<K,        V>()
-    this.flashStore = new FlashStore<K, V>(workdir)
+    this.flashStore = new FlashStore<K, V>(this.workdir)
 
     this.asyncBusyAdd(this.loadStoreToCache())
-
   }
 
   private async loadStoreToCache (): Promise<void> {
