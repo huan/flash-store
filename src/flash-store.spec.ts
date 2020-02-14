@@ -243,6 +243,30 @@ test('create workdir if it is not exist', async t => {
   await store.destroy()
 })
 
+test('Only one instance can use the database directory', async t => {
+  for await (const store of storeFixture()) {
+    try {
+      const workdir = store.workdir
+
+      /**
+       * We have to active the store becasue the medae is lazy initializing.
+       */
+      await store.size
+
+      try {
+        const anotherStore = new FlashStore(workdir)
+        void anotherStore
+        t.fail('should not be instanciated because the workdir is busy.')
+      } catch (e) {
+        t.pass('should throw if another store has already been using the workdir')
+      }
+
+    } catch (e) {
+      t.fail(e || 'rejection')
+    }
+  }
+})
+
 /**
  * Fixtures
  */

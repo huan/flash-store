@@ -1,5 +1,6 @@
 import path  from 'path'
 import fs from 'fs'
+import { flockSync } from 'fs-ext'
 
 import {
   path as appRoot,
@@ -34,6 +35,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
 
   private levelDb: any
   private medeaKeyDir: Map<any, any>
+  private lockFd: number
 
   /**
    * FlashStore is a Key-Value database tool and makes using leveldb more easy for Node.js
@@ -66,6 +68,19 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
         throw e
       }
       log.silly('FlashStore', 'constructor(%s) workdir created.', this.workdir)
+    }
+
+    const lockFile = path.join(
+      this.workdir,
+      '.lock',
+    )
+
+    this.lockFd = fs.openSync(lockFile, 'w')
+    try {
+      flockSync(this.lockFd, 'exnb')
+    } catch (e) {
+      log.error('FlashStore', 'constructor() workdir("%s") is busy: maybe there another FlashStore are using it?', this.workdir)
+      throw e
     }
 
     // we use seperate workdir for snapdb, leveldb, and rocksdb etc.
@@ -332,9 +347,13 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
 
   // }
 
+  /**
+   * FlashStore will not be able to be used anymore after it has been closed.
+   */
   public async close (): Promise<void> {
     log.verbose('FlashStore', 'close()')
     await this.levelDb.close()
+    flockSync(this.lockFd, 'un')
   }
 
   /**
@@ -345,6 +364,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   public async destroy (): Promise<void> {
     log.verbose('FlashStore', 'destroy()')
     await this.levelDb.close()
+    flockSync(this.lockFd, 'un')
     await new Promise(resolve => rimraf(this.workdir!, resolve))
   }
 
