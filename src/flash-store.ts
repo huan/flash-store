@@ -353,8 +353,12 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   public async close (): Promise<void> {
     log.verbose('FlashStore', 'close()')
     await this.levelDb.close()
-    flockSync(this.lockFd, 'un')
-    fs.closeSync(this.lockFd)
+
+    if (this.lockFd !== 0) {
+      flockSync(this.lockFd, 'un')
+      fs.closeSync(this.lockFd)
+      this.lockFd = 0
+    }
   }
 
   /**
@@ -365,8 +369,6 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   public async destroy (): Promise<void> {
     log.verbose('FlashStore', 'destroy()')
     await this.levelDb.close()
-    flockSync(this.lockFd, 'un')
-    fs.closeSync(this.lockFd)
     await new Promise(resolve => rimraf(this.workdir!, resolve))
   }
 

@@ -161,7 +161,7 @@ test('async values()', async t => {
   }
 })
 
-test('close() twice', async t => {
+test('close() twice gracefully', async t => {
   // https://github.com/ClickSimply/snap-db/issues/10
   for await (const store of storeFixture()) {
     try {
