@@ -72,7 +72,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
 
     const lockFile = path.join(
       this.workdir,
-      '.lock',
+      'flash-store.lock',
     )
 
     this.lockFd = fs.openSync(lockFile, 'w')
@@ -354,6 +354,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
     log.verbose('FlashStore', 'close()')
     await this.levelDb.close()
     flockSync(this.lockFd, 'un')
+    fs.closeSync(this.lockFd)
   }
 
   /**
@@ -365,6 +366,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
     log.verbose('FlashStore', 'destroy()')
     await this.levelDb.close()
     flockSync(this.lockFd, 'un')
+    fs.closeSync(this.lockFd)
     await new Promise(resolve => rimraf(this.workdir!, resolve))
   }
 
