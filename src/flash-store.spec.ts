@@ -267,6 +267,27 @@ test('Only one instance can use the database directory', async t => {
   }
 })
 
+test('compact()', async t => {
+  for await (const store of storeFixture()) {
+    try {
+      await store.size
+      const db = (store as any).levelDb.db.db.db
+      await new Promise((resolve, reject) => {
+        db.compact((err: any) => {
+          if (err) {
+            return reject(err)
+          }
+          resolve()
+        })
+      })
+
+      t.pass('compacted')
+    } catch (e) {
+      t.fail(e)
+    }
+  }
+})
+
 /**
  * Fixtures
  */
