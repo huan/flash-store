@@ -45,7 +45,7 @@
     "levelup": "^4.3.2",
     "medeadown": "^1.1.9",
     "rimraf": "^3.0.0",
-    "state-switch": "^0.6.2"
+    "state-switch": "^0.7.2"
   },
   "devDependencies": {
     "@chatie/eslint-config": "^0.8.1",
