@@ -10,7 +10,7 @@
 [![NPM Version](https://badge.fury.io/js/flash-store.svg)](https://badge.fury.io/js/flash-store)
 [![npm (tag)](https://img.shields.io/npm/v/flash-store/next.svg)](https://www.npmjs.com/package/flash-store?activeTab=versions)
 [![Downloads](http://img.shields.io/npm/dm/flash-store.svg?style=flat-square)](https://npmjs.org/package/flash-store)
-[![node](https://img.shields.io/node/v/flash-store.svg?maxAge=604800)](https://nodejs.org/) [![Greenkeeper badge](https://badges.greenkeeper.io/huan/flash-store.svg)](https://greenkeeper.io/)
+[![node](https://img.shields.io/node/v/flash-store.svg?maxAge=604800)](https://nodejs.org/) 
 
 FlashStore is Key-Value persistent storage with easy to use ES6 Map-like API(both Async and Sync support), powered by LevelDB and TypeScript.
 
