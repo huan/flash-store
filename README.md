@@ -119,11 +119,10 @@ See [auto generated docs](https://huan.github.io/flash-store)
 
 ### v0.16 May 2019 - SnapDB as Backend
 
-~~WARN: Do not use this version because it has known issues~~
 
-[#50](https://github.com/huan/flash-store/issues/50) Fixed.
 
 1. Switch from RocksDB to [SnapDB](https://github.com/ClickSimply/snap-db) [#45](https://github.com/huan/flash-store/issues/45)
+1. [#50](https://github.com/huan/flash-store/issues/50) has been fixed. ~~WARN: Do not use this version because it has known issues~~
 
 ### v0.14 May 2019 - RocksDB as Backend
 
