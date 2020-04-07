@@ -117,9 +117,24 @@ See [auto generated docs](https://huan.github.io/flash-store)
 > "The LevelDOWN-compatible wrapper for Medea really opens up the possibility to reuse the modules that have already been created around the LevelUP ecosystem."
 > &mdash; @kevinswiber [link](https://github.com/medea/medeadown/issues/2#issuecomment-49785861)
 
+Known Issues: [FlashStore 会写满磁盘的问题 #155](https://github.com/wechaty/wechaty-puppet-padplus/issues/155)
+
+```ts
+async function compact (store: FlashStore): Promise<void> {
+  await store.size
+  const db = (store as any).levelDb.db.db.db
+  await new Promise((resolve, reject) => {
+    db.compact((err: any) => {
+      if (err) {
+        return reject(err)
+      }
+      resolve()
+    })
+  })
+}
+```
+
 ### v0.16 May 2019 - SnapDB as Backend
-
-
 
 1. Switch from RocksDB to [SnapDB](https://github.com/ClickSimply/snap-db) [#45](https://github.com/huan/flash-store/issues/45)
 1. [#50](https://github.com/huan/flash-store/issues/50) has been fixed. ~~WARN: Do not use this version because it has known issues~~
