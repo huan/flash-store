@@ -105,7 +105,9 @@ See [auto generated docs](https://huan.github.io/flash-store)
 
 ### master
 
-### v0.18 Feb 2019 - Medea as Backend
+### ~~v0.18 Feb 2019 - Medea as Backend~~
+
+DEPRECATED: Due to [#79](https://github.com/huan/flash-store/issues/79) [#74](https://github.com/huan/flash-store/issues/74) and also it is very unstable in production as my experiences. (e.g. memory leak & block event loop)
 
 1. Switch from SnapDB to [MedeaDown](https://github.com/medea/medeadown)
 
