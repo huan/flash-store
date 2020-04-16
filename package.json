@@ -40,12 +40,8 @@
     "app-root-path": "^3.0.0",
     "brolog": "^1.8.3",
     "cuid": "^2.1.8",
-    "encoding-down": "^6.3.0",
-    "fs-ext": "^2.0.0",
-    "levelup": "^4.4.0",
-    "medeadown": "^1.1.9",
     "rimraf": "^3.0.2",
-    "state-switch": "^0.9.9"
+    "state-switch": "^0.6.18"
   },
   "devDependencies": {
     "@chatie/eslint-config": "^0.8.1",

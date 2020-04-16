@@ -102,6 +102,11 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
     this.levelDb = levelup(encoded)
     // console.log((this.levelDb as any)._db.codec)
     this.levelDb.setMaxListeners(17)  // default is Infinity
+
+    process.on('exit', () => db.close());
+    process.on('SIGHUP', () => process.exit(128 + 1));
+    process.on('SIGINT', () => process.exit(128 + 2));
+    process.on('SIGTERM', () => process.exit(128 + 15));
   }
 
   public version (): string {
