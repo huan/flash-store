@@ -105,6 +105,14 @@ See [auto generated docs](https://huan.github.io/flash-store)
 
 ### master
 
+### v0.20 Apr 2020 SQLite as Backend
+
+1. We hardcoded the key type to be `string` only in this version.
+1. We decide to try [better-sqlite3](https://www.npmjs.com/package/better-sqlite3) as it claim is very fast.
+1. The other alternates (would love to try in the future if necessary):
+    1. TypeScript: [sqlite](https://www.npmjs.com/package/sqlite)
+    1. WebAssembly: [sql.js](https://www.npmjs.com/package/sql.js)
+
 ### ~~v0.18 Feb 2019 - Medea as Backend~~
 
 DEPRECATED: Due to [#79](https://github.com/huan/flash-store/issues/79) [#74](https://github.com/huan/flash-store/issues/74) and also it is very unstable in production as my experiences. (e.g. memory leak & block event loop)

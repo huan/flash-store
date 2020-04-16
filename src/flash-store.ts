@@ -1,15 +1,13 @@
 import path  from 'path'
 import fs from 'fs'
-import { flockSync } from 'fs-ext'
 
 import {
   path as appRoot,
 }                   from 'app-root-path'
 
 import rimraf    from 'rimraf'
-import encoding  from 'encoding-down'
-import levelup   from 'levelup'
-import MedeaDown from 'medeadown'
+
+import SQLite from 'better-sqlite3'
 
 import {
   log,
@@ -31,11 +29,22 @@ export interface IteratorOptions {
   prefix?  : any,
 }
 
-export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
+interface FlashSqlite {
+  db: SQLite.Database,
 
-  private levelDb: any
-  private medeaKeyDir: Map<any, any>
-  private lockFd: number
+  stmtCount   : SQLite.Statement,
+  stmtDel     : SQLite.Statement,
+  stmtDelAll  : SQLite.Statement,
+  stmtGet     : SQLite.Statement,
+  stmtSet     : SQLite.Statement,
+  stmtIterate : SQLite.Statement,
+}
+
+type K = string
+
+export class FlashStore<V extends Object> implements AsyncMap<K, V> {
+
+  private flashSqlite: FlashSqlite
 
   /**
    * FlashStore is a Key-Value database tool and makes using leveldb more easy for Node.js
@@ -47,13 +56,8 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    * const flashStore = new FlashStore('flashstore.workdir')
    */
   constructor (
-    public workdir?: string,
+    public workdir = path.join(appRoot, '.flash-store'),
   ) {
-
-    if (!this.workdir) {
-      this.workdir = path.join(appRoot, '.flash-store')
-    }
-
     if (fs.existsSync(this.workdir)) {
       log.verbose('FlashStore', 'constructor(%s)', workdir)
     } else {
@@ -70,43 +74,49 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
       log.silly('FlashStore', 'constructor(%s) workdir created.', this.workdir)
     }
 
-    const lockFile = path.join(
-      this.workdir,
-      'flash-store.lock',
-    )
-
-    this.lockFd = fs.openSync(lockFile, 'w')
-    try {
-      flockSync(this.lockFd, 'exnb')
-    } catch (e) {
-      log.error('FlashStore', 'constructor() workdir("%s") is busy: maybe there another FlashStore are using it?', this.workdir)
-      throw e
-    }
-
     // we use seperate workdir for snapdb, leveldb, and rocksdb etc.
-    const medeaWorkdir = path.join(this.workdir, 'medea')
+    const sqliteFile = path.join(this.workdir, 'sqlite.db')
+    this.flashSqlite = this.initSqlite(sqliteFile)
+  }
 
-    const medeaDown = MedeaDown(medeaWorkdir)
-    this.medeaKeyDir = medeaDown.db.keydir
+  private initSqlite (file: string): FlashSqlite {
+    log.verbose('FlashStore', 'initSqlite(%s)', file)
 
-    // https://twitter.com/juliangruber/status/908688876381892608
-    const encoded = encoding(
-      // leveldown(workdir),
-      medeaDown,
-      {
-        // FIXME: issue #2
-        valueEncoding: 'json',
-      },
-    )
+    const db = new SQLite(file)
 
-    this.levelDb = levelup(encoded)
-    // console.log((this.levelDb as any)._db.codec)
-    this.levelDb.setMaxListeners(17)  // default is Infinity
+    const sql = `
+      CREATE TABLE IF NOT EXISTS store (
+        key TEXT NOT NULL,
+        val TEXT NOT NULL,
+        PRIMARY KEY(key)
+      ) WITHOUT ROWID;
+    `
 
-    process.on('exit', () => db.close());
-    process.on('SIGHUP', () => process.exit(128 + 1));
-    process.on('SIGINT', () => process.exit(128 + 2));
-    process.on('SIGTERM', () => process.exit(128 + 15));
+    db.exec(sql)
+
+    const onExitClose = () => db && db.open && db.close()
+    process.on('exit', onExitClose)
+
+    const stmtCount  = db.prepare('SELECT COUNT(*) FROM store').pluck()
+    const stmtDel    = db.prepare('DELETE FROM store WHERE key = ?')
+    const stmtDelAll = db.prepare('DELETE FROM store')
+    const stmtGet    = db.prepare<[K]>('SELECT val FROM store WHERE key = ?').pluck()
+    const stmtSet    = db.prepare<[V, K]>(`
+      INSERT INTO store (key, val)
+      VALUES ($key, $val)
+      ON CONFLICT(key) DO UPDATE SET val = $val
+    `)
+    const stmtIterate = db.prepare('SELECT key, val FROM store').raw()
+
+    return {
+      db,
+      stmtCount,
+      stmtDel,
+      stmtDelAll,
+      stmtGet,
+      stmtIterate,
+      stmtSet,
+    }
   }
 
   public version (): string {
@@ -124,7 +134,14 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    */
   public async set (key: K, value: V): Promise<void> {
     log.verbose('FlashStore', 'set(%s, %s) value type: %s', key, JSON.stringify(value), typeof value)
-    await this.levelDb.put(key, JSON.stringify(value))
+    // await this.db.put(key, JSON.stringify(value))
+    const result = this.flashSqlite.stmtSet.run({
+      key,
+      val: JSON.stringify(value),
+    })
+    if (result.changes !== 1) {
+      throw new Error('set fail!')
+    }
   }
 
   /**
@@ -137,15 +154,8 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    */
   public async get (key: K): Promise<V | undefined> {
     log.verbose('FlashStore', 'get(%s)', key)
-    try {
-      return JSON.parse(await this.levelDb.get(key))
-    } catch (e) {
-      if (/^NotFoundError/.test(e)) {
-        // The leveldb will throw NotFoundError for non-exist keys
-        return undefined
-      }
-      throw e
-    }
+    const value = this.flashSqlite.stmtGet.get(key)
+    return value && JSON.parse(value)
   }
 
   /**
@@ -158,7 +168,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    */
   public async delete (key: K): Promise<void> {
     log.verbose('FlashStore', 'delete(%s)', key)
-    await this.levelDb.del(key)
+    this.flashSqlite.stmtDel.run(key)
   }
 
   /**
@@ -239,33 +249,11 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   public get size (): Promise<number> {
     log.verbose('FlashStore', 'size()')
 
-    let future = Promise.resolve() as any
-
-    /**
-     * the size will be zero if there's never a put/get operation
-     *  because I guess that it was lazy initialized.
-     */
-    if (this.medeaKeyDir.size === 0) {
-      future = future.then(() => this.get('foobar' as any))
-    }
-    return future.then(() => this.medeaKeyDir.size)
-
-    // // TODO: is there a better way to count all items from the db?
-    // return new Promise<number>(async (resolve, reject) => {
-    //   try {
-    //     let count = 0
-    //     for await (const _ of this) {
-    //       count++
-    //     }
-    //     resolve(count)
-    //   } catch (e) {
-    //     reject(e)
-    //   }
-    // })
+    const num: number = this.flashSqlite.stmtCount.get()
+    return Promise.resolve(num)
   }
 
   /**
-   * FIXME: use better way to do this
    */
   public async has (key: K): Promise<boolean> {
     const val = await this.get(key)
@@ -273,12 +261,9 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   }
 
   /**
-   * TODO: use better way to do this with leveldb
    */
   public async clear (): Promise<void> {
-    for await (const key of this.keys()) {
-      await this.delete(key)
-    }
+    this.flashSqlite.stmtDelAll.run()
   }
 
   /**
@@ -287,28 +272,8 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
   public async * entries (options?: IteratorOptions): AsyncIterableIterator<[K, V]> {
     log.verbose('FlashStore', '*entries(%s)', JSON.stringify(options))
 
-    const iterator = (this.levelDb as any).db.iterator(options)
-
-    while (true) {
-      const pair = await new Promise<[K, V] | null>((resolve, reject) => {
-        iterator.next(function (err: any, key: K, val: V) {
-          if (err) {
-            reject(err)
-          }
-          if (!key && !val) {
-            return resolve(null)
-          }
-          if (val) {
-            // FIXME: issue #2
-            val = JSON.parse(val as any)
-          }
-          return resolve([key, val])
-        })
-      })
-      if (!pair) {
-        break
-      }
-      yield pair
+    for (const [key, val] of this.flashSqlite.stmtIterate.iterate()) {
+      yield [key, JSON.parse(val)]
     }
   }
 
@@ -317,53 +282,12 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
     yield * this.entries()
   }
 
-  // /**
-  //  * @private
-  //  * @deprecated
-  //  */
-  // public async * streamAsyncIterator (): AsyncIterator<[K, V]> {
-  //   log.warn('FlashStore', 'DEPRECATED *[Symbol.asyncIterator]()')
-
-  //   const readStream = this.levelDb.createReadStream()
-
-  //   const endPromise = new Promise<false>((resolve, reject) => {
-  //     readStream
-  //       .once('end',  () => resolve(false))
-  //       .once('error', reject)
-  //   })
-
-  //   let pair: [K, V] | false
-
-  //   do {
-  //     const dataPromise = new Promise<[K, V]>(resolve => {
-  //       readStream.once('data', (data: any) => resolve([data.key, data.value]))
-  //     })
-
-  //     pair = await Promise.race([
-  //       dataPromise,
-  //       endPromise,
-  //     ])
-
-  //     if (pair) {
-  //       yield pair
-  //     }
-
-  //   } while (pair)
-
-  // }
-
   /**
    * FlashStore will not be able to be used anymore after it has been closed.
    */
   public async close (): Promise<void> {
     log.verbose('FlashStore', 'close()')
-    await this.levelDb.close()
-
-    if (this.lockFd !== 0) {
-      flockSync(this.lockFd, 'un')
-      fs.closeSync(this.lockFd)
-      this.lockFd = 0
-    }
+    await this.flashSqlite.db.close()
   }
 
   /**
@@ -373,7 +297,7 @@ export class FlashStore<K = string, V = any> implements AsyncMap<K, V> {
    */
   public async destroy (): Promise<void> {
     log.verbose('FlashStore', 'destroy()')
-    await this.levelDb.close()
+    await this.close()
     await new Promise(resolve => rimraf(this.workdir!, resolve))
   }
 

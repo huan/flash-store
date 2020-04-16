@@ -16,10 +16,12 @@ import {
   FlashStore,
 }             from './flash-store'
 
-export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
+type K = string
 
-  private cacheMap   : Map<K,        V>
-  private flashStore : FlashStore<K, V>
+export class FlashStoreSync<V = any> implements Map<K, V> {
+
+  private cacheMap   : Map<K,     V>
+  private flashStore : FlashStore<V>
 
   private asyncBusyState: StateSwitch
   private asyncBusyDict: {
@@ -41,8 +43,8 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
       log,
     )
 
-    this.cacheMap   = new Map<K,        V>()
-    this.flashStore = new FlashStore<K, V>(this.workdir)
+    this.cacheMap   = new Map<K,     V>()
+    this.flashStore = new FlashStore<V>(this.workdir)
 
     this.asyncBusyAdd(this.loadStoreToCache())
   }
@@ -83,7 +85,10 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
   }
 
   public async destroy (): Promise<void> {
-    this.clear()
+    // Huan(202004): no need to clear before `rm -fr`
+    //  which will introduce a race condition that
+    //  the db might already closed at here.
+    // this.clear()
 
     /**
      * Add destroy task at the end of the event loop
