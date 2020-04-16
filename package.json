@@ -42,7 +42,7 @@
     "brolog": "^1.8.3",
     "cuid": "^2.1.8",
     "rimraf": "^3.0.2",
-    "state-switch": "^0.6.18"
+    "state-switch": "^0.9.9"
   },
   "devDependencies": {
     "@chatie/eslint-config": "^0.8.1",
