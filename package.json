@@ -44,6 +44,7 @@
     "state-switch": "^0.6.18"
   },
   "devDependencies": {
+    "@rollup/plugin-json": "^4.0.2",
     "@types/app-root-path": "^1.2.4",
     "@types/blue-tape": "^0.1.33",
     "@types/encoding-down": "^5.0.0",
