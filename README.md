@@ -1,14 +1,14 @@
 # flash-store
 
+[![Powered by SQLite](https://img.shields.io/badge/Powered%20By-SQLite-green.svg)](https://https://www.sqlite.org/)
 [![Powered by LevelDB](https://img.shields.io/badge/Powered%20By-LevelDB-green.svg)](https://leveldb.org/)
 [![Powered by RocksDB](https://img.shields.io/badge/Powered%20By-RocksDB-green.svg)](https://rocksdb.org/)
-[![Powered by SnapDB](https://img.shields.io/badge/Powered%20By-SnapDB-green.svg)](https://www.npmjs.com/package/snap-db)
-[![Powered by Medea](https://img.shields.io/badge/Powered%20By-Medea-green.svg)](https://www.npmjs.com/package/medeadown)
 [![Powered by TypeScript](https://img.shields.io/badge/Powered%20By-TypeScript-blue.svg)](https://www.typescriptlang.org/)
-[![Build Status](https://travis-ci.com/huan/flash-store.svg?branch=master)](https://travis-ci.com/huan/flash-store)
-[![Build status](https://ci.appveyor.com/api/projects/status/avwx4bnldox01870?svg=true)](https://ci.appveyor.com/project/zixia/flash-store)
-[![NPM Version](https://badge.fury.io/js/flash-store.svg)](https://badge.fury.io/js/flash-store)
-[![npm (tag)](https://img.shields.io/npm/v/flash-store/next.svg)](https://www.npmjs.com/package/flash-store?activeTab=versions)
+
+[![NPM Version](https://img.shields.io/npm/v/flash-store?color=brightgreen)](https://www.npmjs.com/package/flash-store)
+[![npm (next)](https://img.shields.io/npm/v/flash-store/next.svg)](https://www.npmjs.com/package/flash-store?activeTab=versions)
+[![GitHub Action](https://github.com/huan/flash-store/workflows/NPM/badge.svg)](https://github.com/huan/flash-store/actions?query=workflow%3ANPM)
+[![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-blue.svg)](https://www.typescriptlang.org/)
 [![Downloads](http://img.shields.io/npm/dm/flash-store.svg?style=flat-square)](https://npmjs.org/package/flash-store)
 [![node](https://img.shields.io/node/v/flash-store.svg?maxAge=604800)](https://nodejs.org/) 
 
@@ -125,6 +125,8 @@ See [auto generated docs](https://huan.github.io/flash-store)
 
 ### ~~v0.18 Feb 2019 - Medea as Backend~~
 
+[![Powered by Medea](https://img.shields.io/badge/Powered%20By-Medea-green.svg)](https://www.npmjs.com/package/medeadown)
+
 DEPRECATED: Due to [#79](https://github.com/huan/flash-store/issues/79) [#74](https://github.com/huan/flash-store/issues/74) and also it is very unstable in production as my experiences. (e.g. memory leak & block event loop)
 
 1. Switch from SnapDB to [MedeaDown](https://github.com/medea/medeadown)
@@ -155,6 +157,8 @@ async function compact (store: FlashStore): Promise<void> {
 ```
 
 ### v0.16 May 2019 - SnapDB as Backend
+
+[![Powered by SnapDB](https://img.shields.io/badge/Powered%20By-SnapDB-green.svg)](https://www.npmjs.com/package/snap-db)
 
 1. Switch from RocksDB to [SnapDB](https://github.com/ClickSimply/snap-db) [#45](https://github.com/huan/flash-store/issues/45)
 1. [#50](https://github.com/huan/flash-store/issues/50) has been fixed. ~~WARN: Do not use this version because it has known issues~~
