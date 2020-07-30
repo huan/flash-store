@@ -47,11 +47,11 @@ console.log(`key: 1, value: ${await flashStore.get(1)}`)
 
 ## Supported Backend
 
-| Backend | Flash Store |
-| :--- | :--- |
-| SQLite | v0.20 |
-| LevelDB |v0.12 |
-| RocksDB | v0.14 |
+| Backend | Flash Store | Install NPM Command |
+| :--- | :--- | :--- |
+| SQLite | v0.20 | `npm install flash-store@0.20` |
+| RocksDB | v0.14 | `npm install flash-store@0.14` |
+| LevelDB |v0.12 | `npm install flash-store@0.12` |
 
 > SnapDB & Medea were all deprecated because of lots of unknown bugs.
 
