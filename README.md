@@ -45,11 +45,21 @@ console.log(`key: 1, value: ${await flashStore.get(1)}`)
 // Output: undefined
 ```
 
+## Supported Backend
+
+| Backend | Flash Store |
+| :--- | :--- |
+| SQLite | v0.20 |
+| LevelDB |v0.12 |
+| RocksDB | v0.14 |
+
+> SnapDB & Medea were all deprecated because of lots of unknown bugs.
+
 ## API Reference
 
 ### `FlashStore`
 
-FlashStore implments the Standard ES6 Map API with Async modification:
+FlashStore implements the Standard ES6 Map API with Async modification, powered by [async-map-like](https://github.com/huan/async-map-like)
 
 ```ts
 /**
@@ -69,19 +79,19 @@ export interface AsyncMap<K = any, V = any> {
   values  ()                 : AsyncIterableIterator<V>
 }
 
-class FlashStore<K, V> implments AsyncMap<K, V> {}
+class FlashStore<K, V> implements AsyncMap<K, V> {}
 ```
 
 ### `FlashStoreSync`
 
-FlashStoreSync implments the Standard ES6 Map API:
+FlashStoreSync implements the Standard ES6 Map API:
 
 ```ts
-class FlashStoreSync<K, V> implments Map<K, V> {}
+class FlashStoreSync<K, V> implements Map<K, V> {}
 ```
 
 1. You get a sync API at the cost of all your data have to be kept in memory.
-1. The data will be async writting back to disk for persistant storage in background.
+1. The data will be async writing back to disk for persistent storage in background.
 1. The performance of `FlashStoreSync` can be expected high because it's all in memory.
 
 ## Document
@@ -95,7 +105,7 @@ See [auto generated docs](https://huan.github.io/flash-store)
 1. [Node.js databases: an embedded database using LevelDB](https://blog.yld.io/2016/10/24/node-js-databases-an-embedded-database-using-leveldb)
 2. [How to Cook a Graph Database in a Night - LevelGraph](http://nodejsconfit.levelgraph.io/)
 3. [Graph database JS style for Node.js and the Browser. Built upon LevelUp and LevelDB.](https://github.com/levelgraph/levelgraph)
-4. [浅析 Bigtable 和 LevelDB 的实现](http://draveness.me/bigtable-leveldb.html)
+4. [浅析 BigTable 和 LevelDB 的实现](http://draveness.me/bigtable-leveldb.html)
 
 ## Known Issues
 
@@ -168,7 +178,7 @@ async function compact (store: FlashStore): Promise<void> {
 
 ### v0.4 Jun 2018
 
-#### 1. Refactor API to implenment ES6 `Map` interface
+#### 1. Refactor API to implement ES6 `Map` interface
 
 1. Update the API to ES6 `Map`-like, the difference is that FlashStore is all **async**.
 
@@ -186,12 +196,12 @@ Init version, API is LevelDB-like.
 
 ## FAQ
 
-### Q: What's the difference between the `flash-store` and `memory-card`?
+### Q: What's the difference between the `flash-store` and `memory-card`
 
 Short answer:
 
-1. `flash-store` is for save data to local flesystem.
-1. `memory-card` is for save data to a distributed network storage, it can be serilized/deserilized safely by design.
+1. `flash-store` is for save data to local filesystem.
+1. `memory-card` is for save data to a distributed network storage, it can be serialized/deserialized safely by design.
 
 Long answer:
 

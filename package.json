@@ -1,6 +1,6 @@
 {
   "name": "flash-store",
-  "version": "0.19.2",
+  "version": "0.20.0",
   "description": "FlashStore is a Key-Value persistent storage with easy to use ES6 Map-like API(both Async and Sync support), powered by LevelDB and TypeScript.",
   "main": "dist/src/mod.js",
   "types": "dist/src/mod.d.ts",
@@ -38,7 +38,7 @@
   "homepage": "https://github.com/huan/flash-store#readme",
   "dependencies": {
     "app-root-path": "^3.0.0",
-    "async-map-like": "^0.2.3",
+    "async-map-like": "^0.2.4",
     "better-sqlite3": "^7.0.1",
     "brolog": "^1.8.3",
     "cuid": "^2.1.8",

@@ -67,5 +67,13 @@
     "javascript",
     "typescript",
   ],
+  "cSpell.words": [
+    "ality",
+    "flashstore",
+    "leveldb",
+    "leveldown",
+    "nosql",
+    "workdir"
+  ],
 
 }

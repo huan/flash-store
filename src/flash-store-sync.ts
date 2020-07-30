@@ -1,3 +1,5 @@
+import { MapLike } from 'async-map-like'
+
 import path from 'path'
 
 import {
@@ -18,7 +20,7 @@ import {
 
 type K = string
 
-export class FlashStoreSync<V = any> implements Map<K, V> {
+export class FlashStoreSync<V = any> implements MapLike<K, V> {
 
   private cacheMap   : Map<K,     V>
   private flashStore : FlashStore<V>
@@ -56,7 +58,7 @@ export class FlashStoreSync<V = any> implements Map<K, V> {
     }
   }
 
-  private asyncBusyAdd (task: Promise<void>): void {
+  private asyncBusyAdd (task: Promise<any>): void {
     this.asyncBusyState.on(true)
 
     const id = cuid()
