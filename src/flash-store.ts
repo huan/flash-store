@@ -1,9 +1,8 @@
 import path  from 'path'
 import fs from 'fs'
 
-import {
-  path as appRoot,
-}                   from 'app-root-path'
+import { AsyncMapLike } from 'async-map-like'
+import appRoot from 'app-root-path'
 
 import rimraf    from 'rimraf'
 
@@ -13,10 +12,6 @@ import {
   log,
   VERSION,
 }             from './config'
-
-import {
-  AsyncMap,
-}             from './async-map'
 
 export interface IteratorOptions {
   gt?      : any,
@@ -42,7 +37,7 @@ interface FlashSqlite {
 
 type K = string
 
-export class FlashStore<V extends Object> implements AsyncMap<K, V> {
+export class FlashStore<V extends Object> implements AsyncMapLike<K, V> {
 
   private flashSqlite: FlashSqlite
 
@@ -56,7 +51,7 @@ export class FlashStore<V extends Object> implements AsyncMap<K, V> {
    * const flashStore = new FlashStore('flashstore.workdir')
    */
   constructor (
-    public workdir = path.join(appRoot, '.flash-store'),
+    public workdir = path.join(appRoot.path, '.flash-store'),
   ) {
     if (fs.existsSync(this.workdir)) {
       log.verbose('FlashStore', 'constructor(%s)', workdir)
@@ -132,7 +127,7 @@ export class FlashStore<V extends Object> implements AsyncMap<K, V> {
    * @example
    * await flashStore.set(1, 1)
    */
-  public async set (key: K, value: V): Promise<void> {
+  public async set (key: K, value: V): Promise<this> {
     log.verbose('FlashStore', 'set(%s, %s) value type: %s', key, JSON.stringify(value), typeof value)
     // await this.db.put(key, JSON.stringify(value))
     const result = this.flashSqlite.stmtSet.run({
@@ -142,6 +137,7 @@ export class FlashStore<V extends Object> implements AsyncMap<K, V> {
     if (result.changes !== 1) {
       throw new Error('set fail!')
     }
+    return this
   }
 
   /**
@@ -155,7 +151,7 @@ export class FlashStore<V extends Object> implements AsyncMap<K, V> {
   public async get (key: K): Promise<V | undefined> {
     log.verbose('FlashStore', 'get(%s)', key)
     const value = this.flashSqlite.stmtGet.get(key)
-    return value && JSON.parse(value)
+    return value && JSON.parse(value) as any
   }
 
   /**
@@ -166,9 +162,10 @@ export class FlashStore<V extends Object> implements AsyncMap<K, V> {
    * @example
    * await flashStore.delete(1)
    */
-  public async delete (key: K): Promise<void> {
+  public async delete (key: K): Promise<boolean> {
     log.verbose('FlashStore', 'delete(%s)', key)
     this.flashSqlite.stmtDel.run(key)
+    return true
   }
 
   /**
@@ -274,6 +271,19 @@ export class FlashStore<V extends Object> implements AsyncMap<K, V> {
 
     for (const [key, val] of this.flashSqlite.stmtIterate.iterate()) {
       yield [key, JSON.parse(val)]
+    }
+  }
+
+  async forEach (
+    callbackfn: (
+      value: V,
+      key: string,
+      map: any,
+    ) => void,
+    thisArg?: any,
+  ): Promise<void> {
+    for await (const [key, value] of this.entries()) {
+      callbackfn.call(thisArg, value, key, this)
     }
   }
 
