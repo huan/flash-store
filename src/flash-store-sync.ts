@@ -12,6 +12,7 @@ import {
 
 import {
   log,
+  VERSION,
 }             from './config'
 
 import {
@@ -72,8 +73,9 @@ export class FlashStoreSync<V = any> implements MapLike<K, V> {
     })
   }
 
+  static VERSION = VERSION
   public version (): string {
-    return this.flashStore.version()
+    return VERSION
   }
 
   /**

@@ -114,6 +114,8 @@ export class FlashStore<V extends Object> implements AsyncMapLike<K, V> {
     }
   }
 
+  static VERSOIN = VERSION
+
   public version (): string {
     return VERSION
   }
