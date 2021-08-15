@@ -1,5 +1,7 @@
 # flash-store
 
+<!-- markdownlint-disable MD013 -->
+
 [![Powered by SQLite](https://img.shields.io/badge/Powered%20By-SQLite-green.svg)](https://https://www.sqlite.org/)
 [![Powered by LevelDB](https://img.shields.io/badge/Powered%20By-LevelDB-green.svg)](https://leveldb.org/)
 [![Powered by RocksDB](https://img.shields.io/badge/Powered%20By-RocksDB-green.svg)](https://rocksdb.org/)
@@ -10,7 +12,7 @@
 [![GitHub Action](https://github.com/huan/flash-store/workflows/NPM/badge.svg)](https://github.com/huan/flash-store/actions?query=workflow%3ANPM)
 [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-blue.svg)](https://www.typescriptlang.org/)
 [![Downloads](http://img.shields.io/npm/dm/flash-store.svg?style=flat-square)](https://npmjs.org/package/flash-store)
-[![node](https://img.shields.io/node/v/flash-store.svg?maxAge=604800)](https://nodejs.org/) 
+[![node](https://img.shields.io/node/v/flash-store.svg?maxAge=604800)](https://nodejs.org/)
 
 FlashStore is Key-Value persistent storage with easy to use ES6 Map-like API(both Async and Sync support), powered by LevelDB and TypeScript.
 
@@ -54,7 +56,6 @@ console.log(`key: 1, value: ${await flashStore.get(1)}`)
 | SnapDB | v0.16 | ~~npm install flash-store@0.16~~ (deprecated) |
 | RocksDB | v0.14 | `npm install flash-store@0.14` |
 | LevelDB |v0.12 | `npm install flash-store@0.12` |
-
 
 > SnapDB & Medea were all deprecated because of lots of unknown bugs.
 
