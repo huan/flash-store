@@ -54,8 +54,7 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
     log.verbose('FlashStore', 'constructor()')
 
     // https://twitter.com/juliangruber/status/908688876381892608
-    const encoded = encoding(
-      // leveldown(workdir),
+    const encoded = encoding<K, V>(
       leveldown(workdir),
       {
         // FIXME: issue #2
