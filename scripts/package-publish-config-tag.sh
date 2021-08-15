@@ -10,3 +10,4 @@ else
   npx pkg-jq -i '.publishConfig.tag="next"'
   echo 'development release: publicConfig.tag set to next.'
 fi
+
