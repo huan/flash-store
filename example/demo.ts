@@ -1,6 +1,6 @@
 import {
   FlashStore,
-}             from '../src/'
+}             from '../src/mod'
 
 async function main(): Promise<number> {
   const flashStore = new FlashStore('flashstore.workdir')
