@@ -4,8 +4,7 @@ import fs     from 'fs'
 import path   from 'path'
 import os     from 'os'
 
-// tslint:disable:no-shadowed-variable
-import test from 'blue-tape'
+import { test } from 'tstest'
 
 // import { log }    from './config'
 // log.level('silly')
@@ -14,7 +13,7 @@ import {
   FlashStoreSync,
 }                   from './flash-store-sync'
 
-async function* storeSyncFixture() {
+async function * storeSyncFixture () {
   const tmpDir = fs.mkdtempSync(
     path.join(
       os.tmpdir(),
@@ -41,18 +40,18 @@ test('version()', async t => {
 
 test('Store as iterator', async t => {
 
-  t.test('iterator for empty store', async t => {
+  await t.test('iterator for empty store', async t => {
     for await (const storeSync of storeSyncFixture()) {
       let n = 0
       for (const _ of storeSync) {
         n++
-        break
+        // break
       }
       t.equal(n, 0, 'should get empty iterator')
     }
   })
 
-  t.test('async iterator', async t => {
+  await t.test('async iterator', async t => {
     for await (const storeSync of storeSyncFixture()) {
       storeSync.set(KEY, VAL)
       let n = 0
@@ -68,14 +67,14 @@ test('Store as iterator', async t => {
 })
 
 test('get()', async t => {
-  t.test('return null for non existing key', async t => {
+  await t.test('return null for non existing key', async t => {
     for await (const storeSync of storeSyncFixture()) {
       const val = storeSync.get(KEY)
       t.equal(val, undefined, 'should get undefined for not exist key')
     }
   })
 
-  t.test('store string key/val', async t => {
+  await t.test('store string key/val', async t => {
     for await (const storeSync of storeSyncFixture()) {
       storeSync.set(KEY, VAL)
       const val = storeSync.get(KEY)
@@ -83,11 +82,11 @@ test('get()', async t => {
     }
   })
 
-  t.test('store object value', async t => {
+  await t.test('store object value', async t => {
     for await (const storeSync of storeSyncFixture()) {
       storeSync.set(KEY, VAL_OBJ)
       const val = storeSync.get(KEY)
-      t.deepEqual(val, VAL_OBJ, 'should get VAL_OBJ after set KEY')
+      t.same(val, VAL_OBJ, 'should get VAL_OBJ after set KEY')
     }
   })
 })

@@ -1,5 +1,7 @@
 # FLASH-STORE
 
+<!-- markdownlint-disable MD013 -->
+
 [![Powered by LevelDB](https://img.shields.io/badge/Powered%20By-LevelDB-green.svg)](https://leveldb.org/)
 [![Powered by TypeScript](https://img.shields.io/badge/Powered%20By-TypeScript-blue.svg)](https://www.typescriptlang.org/)
 [![Build Status](https://travis-ci.com/huan/flash-store.svg?branch=master)](https://travis-ci.com/huan/flash-store)
@@ -127,6 +129,7 @@ Init version, API is LevelDB-like.
 ### Q: What's the difference between the `flash-store` and `memory-card`?
 
 Short answer:
+
 1. `flash-store` is for save data to local flesystem.
 1. `memory-card` is for save data to a distributed network storage, it can be serilized/deserilized safely by design.
 
@@ -138,11 +141,11 @@ Long answer:
 
 `memory-card` is using a local file to store data in JSON format by default, however, it supports more distributed methods. Learn more from it's repository at [here](https://github.com/huan/memory-card)
 
-
 ## AUTHOR
 
-Huan LI \<zixia@zixia.net\> (http://linkedin.com/in/zixia)
+Huan LI \<zixia@zixia.net\> (<http://linkedin.com/in/zixia>)
 
+<!-- markdownlint-disable MD033 -->
 <a href="http://stackoverflow.com/users/1123955/zixia">
   <img src="http://stackoverflow.com/users/flair/1123955.png" width="208" height="58" alt="profile for zixia at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for zixia at Stack Overflow, Q&amp;A for professional and enthusiast programmers">
 </a>

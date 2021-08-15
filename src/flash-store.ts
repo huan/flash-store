@@ -16,13 +16,13 @@ import levelup   from 'levelup'
 // const levelup   = (<any>levelupProxy).default   || levelupProxy
 
 import {
+  AsyncMapLike,
+}                 from 'async-map-like'
+
+import {
   log,
   VERSION,
 }             from './config'
-
-import {
-  AsyncMap,
-}             from './async-map'
 
 export interface IteratorOptions {
   gt?      : any,
@@ -35,7 +35,8 @@ export interface IteratorOptions {
   prefix?  : any,
 }
 
-export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
+export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
+
   private levelDb: any
 
   /**
@@ -47,7 +48,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    * import { FlashStore } from 'flash-store'
    * const flashStore = new FlashStore('flashstore.workdir')
    */
-  constructor(
+  constructor (
     public workdir = path.join(appRoot, '.flash-store'),
   ) {
     log.verbose('FlashStore', 'constructor()')
@@ -67,7 +68,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
     this.levelDb.setMaxListeners(17)  // default is Infinity
   }
 
-  public version(): string {
+  public version (): string {
     return VERSION
   }
 
@@ -80,15 +81,16 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    * @example
    * await flashStore.put(1, 1)
    */
-  public async put(key: K, value: V): Promise<void> {
+  public async put (key: K, value: V): Promise<void> {
     log.warn('FlashStore', '`put()` DEPRECATED. use `set()` instead.')
     await this.set(key, value)
   }
 
-  public async set(key: K, value: V): Promise<void> {
+  public async set (key: K, value: V): Promise<AsyncMapLike<K, V>> {
     log.verbose('FlashStore', 'set(%s, %s) value type: %s', key, value, typeof value)
     // FIXME: issue #2
     await this.levelDb.put(key, JSON.stringify(value) as any)
+    return this
   }
 
   /**
@@ -99,7 +101,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    * @example
    * console.log(await flashStore.get(1))
    */
-  public async get(key: K): Promise<V | undefined> {
+  public async get (key: K): Promise<V | undefined> {
     log.verbose('FlashStore', 'get(%s)', key)
     try {
       // FIXME: issue #2
@@ -120,14 +122,16 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    * @example
    * await flashStore.del(1)
    */
-  public async del(key: K): Promise<void> {
+  public async del (key: K): Promise<void> {
     log.verbose('FlashStore', '`del()` DEPRECATED. use `delete()` instead')
     await this.delete(key)
   }
 
-  public async delete(key: K): Promise<void> {
+  public async delete (key: K): Promise<boolean> {
     log.verbose('FlashStore', 'delete(%s)', key)
     await this.levelDb.del(key)
+    // TODO: `del` returns `true` or `false`
+    return true
   }
 
   /**
@@ -153,7 +157,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    *   console.log(key)
    * }
    */
-  public async* keys(options: IteratorOptions = {}): AsyncIterableIterator<K> {
+  public async * keys (options: IteratorOptions = {}): AsyncIterableIterator<K> {
     log.verbose('FlashStore', 'keys()')
 
     // options = Object.assign(options, {
@@ -184,7 +188,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    *   console.log(value)
    * }
    */
-  public async* values(options: IteratorOptions = {}): AsyncIterableIterator<V> {
+  public async * values (options: IteratorOptions = {}): AsyncIterableIterator<V> {
     log.verbose('FlashStore', 'values()')
 
     // options = Object.assign(options, {
@@ -206,15 +210,16 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    * const count = await flashStore.count()
    * console.log(`database count: ${count}`)
    */
-  public async count(): Promise<number> {
+  public async count (): Promise<number> {
     log.warn('FlashStore', '`count()` DEPRECATED. use `size()` instead.')
     const size = await this.size
     return size
   }
 
-  public get size(): Promise<number> {
+  public get size (): Promise<number> {
     log.verbose('FlashStore', 'size()')
 
+    /* eslint no-async-promise-executor: 0 */
     // TODO: is there a better way to count all items from the db?
     return new Promise<number>(async (resolve, reject) => {
       try {
@@ -232,7 +237,7 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
   /**
    * FIXME: use better way to do this
    */
-  public async has(key: K): Promise<boolean> {
+  public async has (key: K): Promise<boolean> {
     const val = await this.get(key)
     return !!val
   }
@@ -240,23 +245,36 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
   /**
    * TODO: use better way to do this with leveldb
    */
-  public async clear(): Promise<void> {
+  public async clear (): Promise<void> {
     for await (const key of this.keys()) {
       await this.delete(key)
     }
   }
 
+  get [Symbol.toStringTag] () {
+    return Promise.resolve('FlashStore')
+  }
+
+  [Symbol.iterator] (): AsyncIterableIterator<[K, V]> {
+    log.verbose('FlashStore', '[Symbol.iterator]()')
+    /**
+     * Huan(202108): what is this???
+     *  does it equals to `entries()`?
+     */
+    return this.entries()
+  }
+
   /**
    * @private
    */
-  public async* entries(options?: IteratorOptions): AsyncIterableIterator<[K, V]> {
+  public async * entries (options?: IteratorOptions): AsyncIterableIterator<[K, V]> {
     log.verbose('FlashStore', '*entries(%s)', JSON.stringify(options))
 
     const iterator = (this.levelDb as any).db.iterator(options)
 
     while (true) {
       const pair = await new Promise<[K, V] | null>((resolve, reject) => {
-        iterator.next(function (err: any , key: K, val: V) {
+        iterator.next(function (err: any, key: K, val: V) {
           if (err) {
             reject(err)
           }
@@ -277,15 +295,15 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
     }
   }
 
-  public async *[Symbol.asyncIterator](): AsyncIterableIterator<[K, V]> {
+  public async * [Symbol.asyncIterator] (): AsyncIterableIterator<[K, V]> {
     log.verbose('FlashStore', '*[Symbol.asyncIterator]()')
-    yield* this.entries()
+    yield * this.entries()
   }
 
   /**
    * @private
    */
-  public async *streamAsyncIterator(): AsyncIterator<[K, V]> {
+  public async * streamAsyncIterator (): AsyncIterator<[K, V]> {
     log.warn('FlashStore', 'DEPRECATED *[Symbol.asyncIterator]()')
 
     const readStream = this.levelDb.createReadStream()
@@ -316,7 +334,25 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
 
   }
 
-  public async close(): Promise<void> {
+  async forEach (
+    callbackfn: (
+      value: V,
+      key: K,
+      // map: TestAsyncMapLike,
+      // FIXME(huan) 202007: we have to use any at here, because the typing system is very hard to
+      //  rename `Map` to `TestAsyncMapLike` in this method function parameters.
+      map: any,
+    ) => void,
+    thisArg?: any,
+  ): Promise<void> {
+    log.verbose('FlashStore', 'forEach()')
+
+    for await (const [key, value] of this) {
+      callbackfn.call(thisArg, value, key, this)
+    }
+  }
+
+  public async close (): Promise<void> {
     log.verbose('FlashStore', 'close()')
     await this.levelDb.close()
   }
@@ -326,11 +362,12 @@ export class FlashStore<K = any, V = any> implements AsyncMap<K, V> {
    *
    * @returns {Promise<void>}
    */
-  public async destroy(): Promise<void> {
+  public async destroy (): Promise<void> {
     log.verbose('FlashStore', 'destroy()')
     await this.levelDb.close()
     await new Promise(resolve => rimraf(this.workdir, resolve))
   }
+
 }
 
 export default FlashStore

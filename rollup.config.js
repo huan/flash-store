@@ -1,7 +1,7 @@
 import json from 'rollup-plugin-json'
 
 export default {
-  input: 'dist/index.js',
+  input: 'dist/src/mod.js',
   output: {
     file: 'bundles/flash-store.es6.umd.js',
     name: 'window',

@@ -5,8 +5,7 @@ import path  from 'path'
 
 // import rimraf from 'rimraf'
 
-// tslint:disable:no-shadowed-variable
-import test from 'blue-tape'
+import { test } from 'tstest'
 
 // import { log }    from './config'
 // log.level('silly')
@@ -28,7 +27,7 @@ test('constructor()', async t => {
     ),
   )
 
-  t.doesNotThrow(async () => {
+  await t.resolves(async () => {
     const store = new FlashStore(tmpDir)
 
     // need to do something to create the db directory
@@ -36,7 +35,7 @@ test('constructor()', async t => {
 
     t.ok(fs.existsSync(tmpDir), 'should create the workDir')
     await store.destroy()
-  }, 'should not throw exception with a non existing workDir')
+  }, 'should not reject with a non existing workDir')
 
 })
 
@@ -48,18 +47,18 @@ test('version()', async t => {
 
 test('Store as async iterator', async t => {
 
-  t.test('async iterator for empty store', async t => {
+  await t.test('async iterator for empty store', async t => {
     for await (const store of storeFixture()) {
       let n = 0
       for await (const _ of store) {
         n++
-        break
+        // break
       }
       t.equal(n, 0, 'should get empty iterator')
     }
   })
 
-  t.test('async iterator', async t => {
+  await t.test('async iterator', async t => {
     for await (const store of storeFixture()) {
       await store.set(KEY, VAL)
       let n = 0
@@ -75,14 +74,14 @@ test('Store as async iterator', async t => {
 })
 
 test('async get()', async t => {
-  t.test('return null for non existing key', async t => {
+  await t.test('return null for non existing key', async t => {
     for await (const store of storeFixture()) {
       const val = await store.get(KEY)
       t.equal(val, undefined, 'should get undefined for not exist key')
     }
   })
 
-  t.test('store string key/val', async t => {
+  await t.test('store string key/val', async t => {
     for await (const store of storeFixture()) {
       await store.set(KEY, VAL)
       const val = await store.get(KEY)
@@ -90,11 +89,11 @@ test('async get()', async t => {
     }
   })
 
-  t.test('store object value', async t => {
+  await t.test('store object value', async t => {
     for await (const store of storeFixture()) {
       await store.set(KEY, VAL_OBJ)
       const val = await store.get(KEY)
-      t.deepEqual(val, VAL_OBJ, 'should get VAL_OBJ after set KEY')
+      t.same(val, VAL_OBJ, 'should get VAL_OBJ after set KEY')
     }
   })
 })
@@ -181,7 +180,7 @@ test('async values()', async t => {
 //   await new Promise(r => rimraf(tmpDir, r))
 // })
 
-async function* storeFixture() {
+async function * storeFixture () {
   const tmpDir = fs.mkdtempSync(
     path.join(
       os.tmpdir(),
