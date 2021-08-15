@@ -5,9 +5,10 @@ import {
 }                   from 'app-root-path'
 
 import rimraf    from 'rimraf'
-import encoding  from 'encoding-down'
-import leveldown from 'leveldown'
-import levelup   from 'levelup'
+// import encoding  from 'encoding-down'
+// import leveldown from 'leveldown'
+// import levelup   from 'levelup'
+import level from 'level'
 
 // https://github.com/rollup/rollup/issues/1267#issuecomment-296395734
 // const rimraf    = (<any>rimrafProxy).default    || rimrafProxy
@@ -37,7 +38,7 @@ export interface IteratorOptions {
 
 export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
 
-  private levelDb: any
+  private levelDb: level.LevelDB<K, V>
 
   /**
    * FlashStore is a Key-Value database tool and makes using leveldb more easy for Node.js
@@ -54,15 +55,15 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
     log.verbose('FlashStore', 'constructor()')
 
     // https://twitter.com/juliangruber/status/908688876381892608
-    const encoded = encoding<K, V>(
-      leveldown(workdir),
-      {
-        // FIXME: issue #2
-        valueEncoding: 'json',
-      },
-    )
+    // const encoded = encoding<K, V>(
+    //   leveldown(workdir),
+    //   {
+    //     // FIXME: issue #2
+    //     valueEncoding: 'json',
+    //   },
+    // )
 
-    this.levelDb = levelup(encoded)
+    this.levelDb = level(workdir)
     // console.log((this.levelDb as any)._db.codec)
     this.levelDb.setMaxListeners(17)  // default is Infinity
   }
