@@ -5,13 +5,15 @@ import {
 
 import {
   log,
-}             from './config'
+}                   from './config'
 
 import {
   FlashStore,
 }             from './flash-store'
 
 export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
+
+  static VERSION = FlashStore.VERSION
 
   private cacheMap   : Map<K,        V>
   private flashStore : FlashStore<K, V>

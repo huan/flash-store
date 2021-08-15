@@ -38,6 +38,8 @@ export interface IteratorOptions {
 
 export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
 
+  static VERSION = VERSION
+
   private levelDb: level.LevelDB<K, V>
 
   /**
