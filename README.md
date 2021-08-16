@@ -51,6 +51,7 @@ console.log(`key: 1, value: ${await flashStore.get(1)}`)
 
 | Backend | Flash Store | Install NPM Command |
 | :--- | :--- | :--- |
+| LevelDB |v1.0 | `npm install flash-store@1` |
 | SQLite | v0.20 | `npm install flash-store@0.20` |
 | Medea | v0.18 | ~~npm install flash-store@0.18~~ (deprecated) |
 | SnapDB | v0.16 | ~~npm install flash-store@0.16~~ (deprecated) |
