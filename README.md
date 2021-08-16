@@ -122,6 +122,8 @@ See [auto generated docs](https://huan.github.io/flash-store)
 
 ### v1.0 (Aug 16, 2021) LevelDB v7.0
 
+[![Powered by LevelDB](https://img.shields.io/badge/Powered%20By-LevelDB-green.svg)](https://www.npmjs.com/package/level)
+
 LevelDB v7.0.0 support.
 
 ### v0.20 Apr 2020 SQLite as Backend
