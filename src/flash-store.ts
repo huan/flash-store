@@ -85,7 +85,7 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
    * await flashStore.put(1, 1)
    */
   public async set (key: K, value: V): Promise<AsyncMapLike<K, V>> {
-    log.verbose('FlashStore', 'set(%s, value)', key)
+    log.verbose('FlashStore', 'set(%s, %s)', key, typeof value)
     log.silly('FlashStore', 'set(%s, %s)', key, JSON.stringify(value))
     await this.levelDb.put(key, value)
     return this
