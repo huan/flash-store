@@ -1,6 +1,6 @@
 {
   "name": "flash-store",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "FlashStore is a Key-Value persistent storage with easy to use ES6 Map-like API(both Async and Sync support), powered by LevelDB and TypeScript.",
   "main": "bundles/flash-store.umd.js",
   "types": "dist/src/mod.d.ts",
