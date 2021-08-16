@@ -52,6 +52,7 @@
     "@chatie/tsconfig": "^0.16.2",
     "@types/app-root-path": "^1.2.4",
     "@types/level": "^6.0.0",
+    "@types/level-errors": "^3.0.0",
     "@types/rimraf": "^3.0.1",
     "jsdoc-to-markdown": "^7.0.1",
     "rollup": "^2.56.2",

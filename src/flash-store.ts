@@ -8,7 +8,10 @@ import rimraf    from 'rimraf'
 // import encoding  from 'encoding-down'
 // import leveldown from 'leveldown'
 // import levelup   from 'levelup'
-import level from 'level'
+import level        from 'level'
+import {
+  NotFoundError,
+}                   from 'level-errors'
 
 // https://github.com/rollup/rollup/issues/1267#issuecomment-296395734
 // const rimraf    = (<any>rimrafProxy).default    || rimrafProxy
@@ -56,18 +59,16 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
   ) {
     log.verbose('FlashStore', 'constructor(%s)', workdir)
 
-    // https://twitter.com/juliangruber/status/908688876381892608
-    // const encoded = encoding<K, V>(
-    //   leveldown(workdir),
-    //   {
-    //     // FIXME: issue #2
-    //     valueEncoding: 'json',
-    //   },
-    // )
+    /**
+     * `valueEncoding` is a `encoding-down` options.
+     *  See: https://github.com/Level/encoding-down#db--requireencoding-downdb-options
+     */
+    const levelDb = level(workdir, {
+      valueEncoding: 'json',
+    })
+    levelDb.setMaxListeners(17)  // default is Infinity
 
-    this.levelDb = level(workdir)
-    // console.log((this.levelDb as any)._db.codec)
-    this.levelDb.setMaxListeners(17)  // default is Infinity
+    this.levelDb = levelDb
   }
 
   public version (): string {
@@ -75,7 +76,7 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
   }
 
   /**
-   * Put data in database
+   * Set data in database
    *
    * @param {K} key
    * @param {V} value
@@ -83,15 +84,10 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
    * @example
    * await flashStore.put(1, 1)
    */
-  public async put (key: K, value: V): Promise<void> {
-    log.warn('FlashStore', '`put()` DEPRECATED. use `set()` instead.')
-    await this.set(key, value)
-  }
-
   public async set (key: K, value: V): Promise<AsyncMapLike<K, V>> {
-    log.verbose('FlashStore', 'set(%s, %s) value type: %s', key, value, typeof value)
-    // FIXME: issue #2
-    await this.levelDb.put(key, JSON.stringify(value) as any)
+    log.verbose('FlashStore', 'set(%s, value)', key)
+    log.silly('FlashStore', 'set(%s, %s)', key, JSON.stringify(value))
+    await this.levelDb.put(key, value)
     return this
   }
 
@@ -106,10 +102,14 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
   public async get (key: K): Promise<V | undefined> {
     log.verbose('FlashStore', 'get(%s)', key)
     try {
-      // FIXME: issue #2
-      return JSON.parse(await this.levelDb.get(key) as any)
+      const val = await this.levelDb.get(key)
+      /**
+       * We must `await` inside to
+       *  catch the `NotFoundError`
+       */
+      return val
     } catch (e) {
-      if (/^NotFoundError/.test(e)) {
+      if (e instanceof NotFoundError) {
         return undefined
       }
       throw e
@@ -124,10 +124,10 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
    * @example
    * await flashStore.del(1)
    */
-  public async del (key: K): Promise<void> {
-    log.verbose('FlashStore', '`del()` DEPRECATED. use `delete()` instead')
-    await this.delete(key)
-  }
+  // public async del (key: K): Promise<void> {
+  //   log.verbose('FlashStore', '`del()` DEPRECATED. use `delete()` instead')
+  //   await this.delete(key)
+  // }
 
   public async delete (key: K): Promise<boolean> {
     log.verbose('FlashStore', 'delete(%s)', key)
@@ -205,18 +205,18 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
   }
 
   /**
-   * Get the counts of the database
-   * @deprecated use property `size` instead
+   * Get the size of the database
    * @returns {Promise<number>}
    * @example
-   * const count = await flashStore.count()
-   * console.log(`database count: ${count}`)
+   * const size = await flashStore.size
+   * console.log(`database size: ${size}`)
    */
-  public async count (): Promise<number> {
-    log.warn('FlashStore', '`count()` DEPRECATED. use `size()` instead.')
-    const size = await this.size
-    return size
-  }
+  // * @deprecated use property `size` instead
+  // public async count (): Promise<number> {
+  //   log.warn('FlashStore', '`count()` DEPRECATED. use `size()` instead.')
+  //   const size = await this.size
+  //   return size
+  // }
 
   public get size (): Promise<number> {
     log.verbose('FlashStore', 'size()')
@@ -283,10 +283,9 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
           if (!key && !val) {
             return resolve(null)
           }
-          if (val) {
-            // FIXME: issue #2
-            val = JSON.parse(val as any)
-          }
+          // if (val) {
+          //   val = JSON.parse(val as any)
+          // }
           return resolve([key, val])
         })
       })
@@ -305,36 +304,36 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
   /**
    * @private
    */
-  public async * streamAsyncIterator (): AsyncIterator<[K, V]> {
-    log.warn('FlashStore', 'DEPRECATED *[Symbol.asyncIterator]()')
+  // public async * streamAsyncIterator (): AsyncIterator<[K, V]> {
+  //   log.warn('FlashStore', 'DEPRECATED *[Symbol.asyncIterator]()')
 
-    const readStream = this.levelDb.createReadStream()
+  //   const readStream = this.levelDb.createReadStream()
 
-    const endPromise = new Promise<false>((resolve, reject) => {
-      readStream
-        .once('end',  () => resolve(false))
-        .once('error', reject)
-    })
+  //   const endPromise = new Promise<false>((resolve, reject) => {
+  //     readStream
+  //       .once('end',  () => resolve(false))
+  //       .once('error', reject)
+  //   })
 
-    let pair: [K, V] | false
+  //   let pair: [K, V] | false
 
-    do {
-      const dataPromise = new Promise<[K, V]>(resolve => {
-        readStream.once('data', (data: any) => resolve([data.key, data.value]))
-      })
+  //   do {
+  //     const dataPromise = new Promise<[K, V]>(resolve => {
+  //       readStream.once('data', (data: any) => resolve([data.key, data.value]))
+  //     })
 
-      pair = await Promise.race([
-        dataPromise,
-        endPromise,
-      ])
+  //     pair = await Promise.race([
+  //       dataPromise,
+  //       endPromise,
+  //     ])
 
-      if (pair) {
-        yield pair
-      }
+  //     if (pair) {
+  //       yield pair
+  //     }
 
-    } while (pair)
+  //   } while (pair)
 
-  }
+  // }
 
   async forEach (
     callbackfn: (
