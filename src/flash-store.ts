@@ -54,7 +54,7 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
   constructor (
     public workdir = path.join(appRoot, '.flash-store'),
   ) {
-    log.verbose('FlashStore', 'constructor()')
+    log.verbose('FlashStore', 'constructor(%s)', workdir)
 
     // https://twitter.com/juliangruber/status/908688876381892608
     // const encoded = encoding<K, V>(
