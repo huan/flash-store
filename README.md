@@ -216,7 +216,7 @@ Init version, API is LevelDB-like.
 Short answer:
 
 1. `flash-store` is for save data to local filesystem.
-1. `memory-card` is for save data to a distributed network storage, it can be serialized/deserialized safely by design.
+1. `memory-card` is for save data to a distributed network storage, it can be serialized/deserialized safely with the minimum payload transfered by design.
 
 Long answer:
 
@@ -224,7 +224,7 @@ Long answer:
 
 `flash-store` is using a no-sql local file database to maximum the performance, it can be used as a local database, or a local cache for whatever you want to cache from other API.
 
-`memory-card` is using a local file to store data in JSON format by default, however, it supports more distributed methods. Learn more from it's repository at [here](https://github.com/huan/memory-card)
+`memory-card` is using a local file to store data in JSON format by default, however, it supports more distributed methods and it can be serialized/deserialized safely with the minimum payload for transfer the data between networks (for example, it can serialize itself to only include the `redis` config and then deserialize it to restore a MemoryCard instance with the same data backend). Learn more from it's repository at [here](https://github.com/huan/memory-card)
 
 ## Author
 
