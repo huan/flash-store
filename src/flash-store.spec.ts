@@ -22,7 +22,6 @@ test('constructor()', async t => {
   const tmpDir = fs.mkdtempSync(
     path.join(
       os.tmpdir(),
-      path.sep,
       'flash-store-',
     ),
   )
@@ -37,6 +36,7 @@ test('constructor()', async t => {
     await store.destroy()
   }, 'should not reject with a non existing workDir')
 
+  t.ok(!fs.existsSync(tmpDir), 'should destroyed the workDir')
 })
 
 test('version()', async t => {
