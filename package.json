@@ -43,7 +43,7 @@
     "cuid": "^2.1.8",
     "level": "^7.0.0",
     "rimraf": "^3.0.2",
-    "state-switch": "^0.6.18"
+    "state-switch": "^0.14.1"
   },
   "devDependencies": {
     "@chatie/eslint-config": "^0.12.4",
