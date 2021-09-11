@@ -33,7 +33,7 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
     this.asyncBusyDict = {}
     this.asyncBusyState   = new StateSwitch(
       'Busy:' + workdir.split('/').pop(), // get the latest folder name
-      log,
+      { log },
     )
 
     this.cacheMap   = new Map<K,        V>()
