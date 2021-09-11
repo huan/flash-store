@@ -1,4 +1,4 @@
-#!/usr/bin/env ts-node
+#!/usr/bin/env -S node --no-warnings --loader ts-node/esm
 
 import fs     from 'fs'
 import path   from 'path'
@@ -11,7 +11,7 @@ import { test } from 'tstest'
 
 import {
   FlashStoreSync,
-}                   from './flash-store-sync'
+}                   from './flash-store-sync.js'
 
 async function * storeSyncFixture () {
   const tmpDir = fs.mkdtempSync(

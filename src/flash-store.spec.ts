@@ -1,4 +1,5 @@
-#!/usr/bin/env ts-node
+#!/usr/bin/env -S node --no-warnings --loader ts-node/esm
+
 import fs    from 'fs'
 import os    from 'os'
 import path  from 'path'
@@ -12,7 +13,7 @@ import { test } from 'tstest'
 
 import {
   FlashStore,
-}               from './flash-store'
+}               from './flash-store.js'
 
 const KEY     = 'test-key'
 const VAL     = 'test-val'

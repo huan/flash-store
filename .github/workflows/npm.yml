@@ -7,8 +7,13 @@ jobs:
     name: Build
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        node: [10, 14, 16]
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        node:
+          - 14
+          - 16
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -17,7 +22,7 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: package.json
 
       - name: Install Dependencies
@@ -35,14 +40,14 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: 16
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: package.json
 
       - name: Install Dependencies
         run: npm install
 
-      - name: Generate Version
-        run: ./scripts/generate-version.sh
+      - name: Generate Package JSON
+        run: ./scripts/generate-package-json.sh
 
       - name: Pack Testing
         run: ./scripts/npm-pack-testing.sh
@@ -50,7 +55,9 @@ jobs:
   publish:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/v'))
     name: Publish
-    needs: [build, pack]
+    needs:
+      - build
+      - pack
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -58,14 +65,14 @@ jobs:
         with:
           node-version: 16
           registry-url: https://registry.npmjs.org/
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: package.json
 
       - name: Install Dependencies
         run: npm install
 
-      - name: Generate Version
-        run: ./scripts/generate-version.sh
+      - name: Generate Package JSON
+        run: ./scripts/generate-package-json.sh
 
       - name: Set Publish Config
         run: ./scripts/package-publish-config-tag.sh
