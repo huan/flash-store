@@ -120,6 +120,7 @@ See [auto generated docs](https://huan.github.io/flash-store)
 
 ### master v1.3 (Sep 12, 2021)
 
+1. ES Modules support ([#93](https://github.com/huan/flash-store/pull/93))
 1. Remove default `workdir` in `FlashStore` constructor.
 
 ### v1.0 (Aug 16, 2021) LevelDB v7.0
