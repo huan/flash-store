@@ -1,17 +1,13 @@
 import * as path  from 'path'
 
-import {
-  path as appRoot,
-}                   from 'app-root-path'
+import appRoot   from 'app-root-path'
 
 import rimraf    from 'rimraf'
 // import encoding  from 'encoding-down'
 // import leveldown from 'leveldown'
 // import levelup   from 'levelup'
 import level        from 'level'
-import {
-  NotFoundError,
-}                   from 'level-errors'
+import levelErrors  from 'level-errors'
 
 // https://github.com/rollup/rollup/issues/1267#issuecomment-296395734
 // const rimraf    = (<any>rimrafProxy).default    || rimrafProxy
@@ -19,14 +15,14 @@ import {
 // // const leveldown = (<any>leveldownProxy).default || leveldownProxy
 // const levelup   = (<any>levelupProxy).default   || levelupProxy
 
-import {
+import type {
   AsyncMapLike,
 }                 from 'async-map-like'
 
 import {
   log,
   VERSION,
-}             from './config'
+}             from './config.js'
 
 export interface IteratorOptions {
   gt?      : any,
@@ -55,7 +51,7 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
    * const flashStore = new FlashStore('flashstore.workdir')
    */
   constructor (
-    public workdir = path.join(appRoot, '.flash-store'),
+    public workdir = path.join(appRoot.path, '.flash-store'),
   ) {
     log.verbose('FlashStore', 'constructor(%s)', workdir)
 
@@ -109,7 +105,7 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
        */
       return val
     } catch (e) {
-      if (e instanceof NotFoundError) {
+      if (e instanceof levelErrors.NotFoundError) {
         return undefined
       }
       throw e

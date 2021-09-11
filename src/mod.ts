@@ -1,11 +1,13 @@
-import { log }      from './config'
-import { VERSION }  from './version'
+import {
+  log,
+  VERSION,
+}                   from './config.js'
 import {
   FlashStore,
-}                   from './flash-store'
+}                   from './flash-store.js'
 import {
   FlashStoreSync,
-}                   from './flash-store-sync'
+}                   from './flash-store-sync.js'
 
 export default FlashStore
 export {

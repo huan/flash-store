@@ -5,11 +5,11 @@ import {
 
 import {
   log,
-}                   from './config'
+}                   from './config.js'
 
 import {
   FlashStore,
-}             from './flash-store'
+}             from './flash-store.js'
 
 export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
 

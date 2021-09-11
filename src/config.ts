@@ -1,13 +1,10 @@
 import { log } from 'brolog'
 
-import { VERSION } from './version'
+import { packageJson } from './package-json.js'
+
+const VERSION = packageJson.version || '0.0.0'
 
 /// <reference path="./typings.d.ts" />
-
-// https://github.com/Microsoft/TypeScript/issues/14151#issuecomment-280812617
-if (!Symbol.asyncIterator) {
-  (<any>Symbol).asyncIterator = Symbol.for('Symbol.asyncIterator')
-}
 
 export {
   log,
