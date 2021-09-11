@@ -118,7 +118,9 @@ See [auto generated docs](https://huan.github.io/flash-store)
 
 ## Version History
 
-### master
+### master v1.1 (Sep 12, 2021)
+
+1. ES Modules support
 
 ### v1.0 (Aug 16, 2021) LevelDB v7.0
 
