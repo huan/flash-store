@@ -1,7 +1,3 @@
-import * as path  from 'path'
-
-import appRoot   from 'app-root-path'
-
 import rimraf    from 'rimraf'
 // import encoding  from 'encoding-down'
 // import leveldown from 'leveldown'
@@ -51,7 +47,7 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
    * const flashStore = new FlashStore('flashstore.workdir')
    */
   constructor (
-    public workdir = path.join(appRoot.path, '.flash-store'),
+    public workdir: string,
   ) {
     log.verbose('FlashStore', 'constructor(%s)', workdir)
 
