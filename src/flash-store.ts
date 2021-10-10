@@ -214,7 +214,12 @@ export class FlashStore<K = any, V = any> implements AsyncMapLike<K, V> {
     log.verbose('FlashStore', 'size()')
 
     /* eslint no-async-promise-executor: 0 */
-    // TODO: is there a better way to count all items from the db?
+    /**
+     * Get the total number (size) of the LevelDB keys #96
+     *  - https://github.com/huan/flash-store/issues/96
+     *
+     * TODO: is there a better way to count all items from the db?
+     */
     return new Promise<number>(async (resolve, reject) => {
       try {
         let count = 0
