@@ -79,7 +79,7 @@ export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
   }
 
   public async destroy (): Promise<void> {
-    this.clear()
+    // this.clear()
     // add destroy task at the end of the event loop
     this.asyncBusyState.ready('off')
       .then(
