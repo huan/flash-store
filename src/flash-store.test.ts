@@ -55,6 +55,21 @@ test('persists JSON values, reports falsey keys, and reopens', async (t) => {
   await reopened.destroy()
 })
 
+test('allows only one writer instance per workdir at a time', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const first = new FlashStore<string, unknown>(dir)
+  assert.throws(
+    () => new FlashStore<string, unknown>(dir),
+    /already in use by another process/,
+  )
+  await first.close()
+  const second = new FlashStore<string, unknown>(dir)
+  await second.set('key', { value: 1 })
+  assert.deepEqual(await second.get('key'), { value: 1 })
+  await second.destroy()
+})
+
 test('delete reports existence per call, in order with queued writes', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
   const store = new FlashStore<string, number>(dir)

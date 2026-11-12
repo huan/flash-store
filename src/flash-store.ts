@@ -2,8 +2,11 @@
  * Implements the asynchronous Map-like API over an LMDB environment.
  * It owns the database lifecycle, key validation, and JSON serialization. The
  * synchronous facade builds on this API and its internal serialized-write hook.
+ * This module also enforces single-process ownership of each workdir so only
+ * one store instance can write a database directory at a time.
  */
 import { channel } from 'node:diagnostics_channel'
+import { closeSync, mkdirSync, openSync, rmSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { parse, resolve } from 'node:path'
@@ -25,6 +28,54 @@ export interface IteratorOptions<K extends StoreKey = StoreKey> {
 }
 
 const operations = channel('flash-store.operation')
+const WORKDIR_LOCK_FILE = '.flash-store.lock'
+
+/** Tracks a process-local exclusive lock file for one LMDB workdir. */
+interface WorkdirLock {
+  fd: number
+  path: string
+  released: boolean
+}
+
+/**
+ * Acquire an exclusive lock for the workdir before opening LMDB.
+ * The lock file prevents multiple FlashStore instances in different processes
+ * from concurrently writing the same database files.
+ */
+function acquireWorkdirLock(workdir: string): WorkdirLock {
+  mkdirSync(workdir, { recursive: true })
+  const lockPath = resolve(workdir, WORKDIR_LOCK_FILE)
+  try {
+    const fd = openSync(lockPath, 'wx')
+    return { fd, path: lockPath, released: false }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+      throw new Error(
+        `FlashStore workdir is already in use by another process: ${workdir}`,
+      )
+    }
+    throw error
+  }
+}
+
+/**
+ * Release the exclusive workdir lock.
+ * Lock cleanup is best-effort because close() should preserve LMDB close errors
+ * and not replace them with lock file cleanup failures.
+ */
+function releaseWorkdirLock(lock: WorkdirLock): void {
+  if (lock.released) return
+  lock.released = true
+  try {
+    closeSync(lock.fd)
+  } finally {
+    try {
+      rmSync(lock.path, { force: true })
+    } catch {
+      // Ignore cleanup errors so they do not mask database close behavior.
+    }
+  }
+}
 
 /** Reject keys that the configured ordered-binary encoding cannot represent safely. */
 export function validateKey(key: StoreKey): void {
@@ -123,6 +174,7 @@ export class FlashStore<K extends StoreKey = StoreKey, V = unknown> {
   static VERSION = VERSION
   readonly workdir: string
   private readonly db: RootDatabase<string, K>
+  private readonly workdirLock: WorkdirLock
   private closePromise?: Promise<void>
 
   static {
@@ -132,12 +184,18 @@ export class FlashStore<K extends StoreKey = StoreKey, V = unknown> {
   /** Opens an LMDB database in the specified directory. */
   constructor(workdir: string) {
     this.workdir = resolve(workdir)
-    this.db = open<string, K>({
-      path: this.workdir,
-      noSubdir: false,
-      // Values are serialized once before writing, using LMDB's JSON byte format.
-      encoding: 'string',
-    })
+    this.workdirLock = acquireWorkdirLock(this.workdir)
+    try {
+      this.db = open<string, K>({
+        path: this.workdir,
+        noSubdir: false,
+        // Values are serialized once before writing, using LMDB's JSON byte format.
+        encoding: 'string',
+      })
+    } catch (error) {
+      releaseWorkdirLock(this.workdirLock)
+      throw error
+    }
     log.verbose('FlashStore', 'constructor(%s)', workdir)
   }
 
@@ -279,7 +337,13 @@ export class FlashStore<K extends StoreKey = StoreKey, V = unknown> {
   /** Closes the database after outstanding writes; repeated calls are safe. */
   async close(): Promise<void> {
     log.verbose('FlashStore', 'close()')
-    this.closePromise ??= this.db.close()
+    this.closePromise ??= (async () => {
+      try {
+        await this.db.close()
+      } finally {
+        releaseWorkdirLock(this.workdirLock)
+      }
+    })()
     await this.closePromise
   }
 
