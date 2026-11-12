@@ -1,163 +1,179 @@
-import cuid from 'cuid'
-import {
-  StateSwitch,
-}               from 'state-switch'
+/**
+ * Provides a synchronous in-memory Map facade with ordered asynchronous write-back.
+ * FlashStore owns persistence; ready() is the boundary for observing write failures.
+ */
 
-import {
-  log,
-}                   from './config.js'
+import { log } from './config.ts'
+import { FlashStore, type StoreKey } from './flash-store.ts'
 
-import {
-  FlashStore,
-}             from './flash-store.js'
-
-export class FlashStoreSync<K = any, V = any> implements Map<K, V> {
-
+/** In-memory Map backed by asynchronous LMDB writes; await ready() before reading restored data. */
+export class FlashStoreSync<K extends StoreKey = StoreKey, V = unknown>
+  implements Map<K, V>
+{
   static VERSION = FlashStore.VERSION
+  readonly workdir: string
+  private readonly cacheMap = new Map<K, V>()
+  private readonly flashStore: FlashStore<K, V>
+  private readonly touched = new Set<K>()
+  private loading = true
+  private clearedDuringLoad = false
+  private pending: Promise<void>
+  private closing = false
+  private failureReported = false
 
-  private cacheMap   : Map<K,        V>
-  private flashStore : FlashStore<K, V>
-
-  private asyncBusyState: StateSwitch
-  private asyncBusyDict: {
-    [id: string]: Promise<void>,
-  }
-
-  constructor (
-    public workdir?: string,
-  ) {
+  /** Opens the backing store and starts restoring its cache. */
+  constructor(workdir = '.flash-store-sync') {
     log.verbose('CacheStore', 'constructor(%s)', workdir)
-
-    workdir = workdir || '.flash-store-sync'
-
-    this.asyncBusyDict = {}
-    this.asyncBusyState   = new StateSwitch(
-      'Busy:' + workdir.split('/').pop(), // get the latest folder name
-      { log },
-    )
-
-    this.cacheMap   = new Map<K,        V>()
+    this.workdir = workdir
     this.flashStore = new FlashStore<K, V>(workdir)
-
-    this.asyncBusyAdd(this.loadStoreToCache())
-
+    this.pending = this.load()
+    this.observeFailure()
   }
 
-  private async loadStoreToCache (): Promise<void> {
-    this.cacheMap.clear()
-    for await (const [key, val] of this.flashStore) {
-      this.cacheMap.set(key, val)
+  /** Restore untouched keys while immediate cache mutations remain authoritative. */
+  private async load(): Promise<void> {
+    try {
+      for await (const [key, value] of this.flashStore) {
+        if (!this.clearedDuringLoad && !this.touched.has(key))
+          this.cacheMap.set(key, value)
+      }
+    } finally {
+      this.loading = false
+      this.touched.clear()
     }
   }
 
-  private asyncBusyAdd (task: Promise<any>): void {
-    this.asyncBusyState.on(true)
+  /** Serialize writes behind initialization and retain failures for lifecycle calls. */
+  private enqueue(action: () => Promise<unknown>): void {
+    if (this.closing) throw new Error('Store is closing or closed')
+    this.pending = this.pending.then(async () => {
+      await action()
+    })
+    this.observeFailure()
+  }
 
-    const id = cuid()
-    this.asyncBusyDict[id] = task.finally(() => {
-      delete this.asyncBusyDict[id]
-      if (Object.keys(this.asyncBusyDict).length <= 0) {
-
-        this.asyncBusyState.off(true)
-
+  /** Report background errors once while retaining the rejection for lifecycle calls. */
+  private observeFailure(): void {
+    void this.pending.catch((error: unknown) => {
+      if (!this.failureReported) {
+        this.failureReported = true
+        log.error('CacheStore', 'Background operation failed: %s', error)
       }
     })
   }
 
-  public version (): string {
+  /** Returns the package version. */
+  version(): string {
     return this.flashStore.version()
   }
 
-  /**
-   *
-   * Async methods:
-   *
-   */
-  public async close (): Promise<void> {
+  /** Waits for initialization and writes queued before this call, rejecting on failure. */
+  async ready(): Promise<void> {
+    await this.pending
+  }
+
+  /** Waits for writes and closes the backing store, including when a write failed. */
+  async close(): Promise<void> {
+    this.closing = true
+    try {
+      await this.ready()
+    } finally {
+      await this.flashStore.close()
+    }
+  }
+
+  /** Waits for successful writes, then closes and removes the database directory. */
+  async destroy(): Promise<void> {
+    this.closing = true
     await this.ready()
-    await this.flashStore.close()
+    await this.flashStore.destroy()
   }
 
-  public async destroy (): Promise<void> {
-    // this.clear()
-    // add destroy task at the end of the event loop
-    this.asyncBusyState.ready('off')
-      .then(
-        () => this.flashStore.destroy(),
-      ).catch(console.error)
-  }
-
-  public async ready (): Promise<void> {
-    await this.asyncBusyState.ready('off')
-  }
-
-  /*******************************************************
-   *
-   *
-   * The following methods is all for ES6 Map Interface
-   *
-   *
-   *******************************************************/
-
-  public get size (): number {
+  /** Returns the current number of cached entries. */
+  get size(): number {
     return this.cacheMap.size
   }
 
-  get [Symbol.toStringTag] () {
-    return 'FlashStoreSync' as any as 'Map'
+  /** Identifies this object as a Map. */
+  get [Symbol.toStringTag](): string {
+    return 'Map'
   }
 
-  public [Symbol.iterator] () {
+  /** Iterates cached entries in insertion order. */
+  [Symbol.iterator](): MapIterator<[K, V]> {
     return this.cacheMap[Symbol.iterator]()
   }
 
-  public entries () {
+  /** Iterates cached entries in insertion order. */
+  entries(): MapIterator<[K, V]> {
     return this.cacheMap.entries()
   }
 
-  public keys () {
+  /** Iterates cached keys in insertion order. */
+  keys(): MapIterator<K> {
     return this.cacheMap.keys()
   }
 
-  public values () {
+  /** Iterates cached values in insertion order. */
+  values(): MapIterator<V> {
     return this.cacheMap.values()
   }
 
-  public clear (): void {
-    this.asyncBusyAdd(this.flashStore.clear())
-    return this.cacheMap.clear()
+  /** Clears the cache immediately and queues persistent removal. */
+  clear(): void {
+    this.enqueue(() => this.flashStore.clear())
+    if (this.loading) this.clearedDuringLoad = true
+    this.cacheMap.clear()
   }
 
-  public delete (key: K): boolean {
-    this.asyncBusyAdd(this.flashStore.delete(key))
+  /** Removes a cached entry immediately and queues persistent removal. */
+  delete(key: K): boolean {
+    this.enqueue(() => this.flashStore.delete(key))
+    if (this.loading) this.touched.add(key)
     return this.cacheMap.delete(key)
   }
 
-  /**
-   * Do not mutate the key/value in the forEach loop!
-   */
-  public forEach (callbackfn: (value: V, key: K, map: Map<K, V>) => void, thisArg?: any): void {
-    /**
-     * 1. no need to call flashStore
-     * 2. callbackfn should not mutate the data, or the data will be lost sync between cache & store
-     */
-    return this.cacheMap.forEach(callbackfn, thisArg)
+  /** Invokes the callback for each cached entry. */
+  forEach(
+    callbackfn: (value: V, key: K, map: Map<K, V>) => void,
+    thisArg?: unknown,
+  ): void {
+    for (const [key, value] of this.cacheMap)
+      callbackfn.call(thisArg, value, key, this)
   }
 
-  public get (key: K): V | undefined {
+  /** Reads a cached value; await ready() first to include previously persisted data. */
+  get(key: K): V | undefined {
     return this.cacheMap.get(key)
   }
 
-  public has (key: K): boolean {
+  /** Checks the cache; await ready() first to include previously persisted data. */
+  has(key: K): boolean {
     return this.cacheMap.has(key)
   }
 
-  public set (key: K, value: V): this {
-    this.asyncBusyAdd(this.flashStore.set(key, value))
+  /** Returns a cached value or inserts and queues the supplied default. */
+  getOrInsert(key: K, defaultValue: V): V {
+    if (this.cacheMap.has(key)) return this.cacheMap.get(key) as V
+    this.set(key, defaultValue)
+    return defaultValue
+  }
+
+  /** Returns a cached value or computes, inserts, and queues a new value. */
+  getOrInsertComputed(key: K, callback: (key: K) => V): V {
+    if (this.cacheMap.has(key)) return this.cacheMap.get(key) as V
+    const value = callback(key)
+    this.set(key, value)
+    return value
+  }
+
+  /** Updates the cache immediately and queues an ordered persistent write. */
+  set(key: K, value: V): this {
+    this.enqueue(() => this.flashStore.set(key, value))
+    if (this.loading) this.touched.add(key)
     this.cacheMap.set(key, value)
     return this
   }
-
 }
 
 export default FlashStoreSync
