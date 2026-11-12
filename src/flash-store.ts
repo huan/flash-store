@@ -38,6 +38,11 @@ function validateKey(key: StoreKey): void {
   }
 }
 
+/** Use Map's zero equality; TypeScript represents both signs as the same numeric type. */
+function normalizeKey<K extends StoreKey>(key: K): K {
+  return Object.is(key, -0) ? (0 as K) : key
+}
+
 /** Reject ambiguous bounds before creating an LMDB cursor. */
 function validateOptions<K extends StoreKey>(
   options: IteratorOptions<K>,
@@ -67,20 +72,24 @@ function validateOptions<K extends StoreKey>(
   }
 }
 
-/** Persistent key-value store. Values must be serializable as JSON. */
+/**
+ * Persistent key-value store. Values use JSON round-tripping, which may change their
+ * runtime type; the generic value type does not validate or prevent this.
+ */
 export class FlashStore<K extends StoreKey = StoreKey, V = unknown> {
   static VERSION = VERSION
   readonly workdir: string
-  private readonly db: RootDatabase<V, K>
+  private readonly db: RootDatabase<string, K>
   private closePromise?: Promise<void>
 
   /** Opens an LMDB database in the specified directory. */
   constructor(workdir: string) {
     this.workdir = resolve(workdir)
-    this.db = open<V, K>({
+    this.db = open<string, K>({
       path: this.workdir,
       noSubdir: false,
-      encoding: 'json',
+      // Values are serialized once before writing, using LMDB's JSON byte format.
+      encoding: 'string',
     })
     log.verbose('FlashStore', 'constructor(%s)', workdir)
   }
@@ -98,7 +107,7 @@ export class FlashStore<K extends StoreKey = StoreKey, V = unknown> {
       throw new TypeError('Value must be JSON serializable')
     log.verbose('FlashStore', 'set(%s, %s)', key, typeof value)
     log.silly('FlashStore', 'set(%s, %s)', key, serialized)
-    await this.db.put(key, value)
+    await this.db.put(normalizeKey(key), serialized)
     if (operations.hasSubscribers) operations.publish({ operation: 'set' })
     return this
   }
@@ -107,22 +116,24 @@ export class FlashStore<K extends StoreKey = StoreKey, V = unknown> {
   async get(key: K): Promise<V | undefined> {
     validateKey(key)
     log.verbose('FlashStore', 'get(%s)', key)
-    return this.db.get(key)
+    const value = this.db.get(normalizeKey(key))
+    return value === undefined ? undefined : JSON.parse(value)
   }
 
   /** Returns whether the key exists, including when its value is falsey. */
   async has(key: K): Promise<boolean> {
     validateKey(key)
-    return this.db.doesExist(key)
+    return this.db.doesExist(normalizeKey(key))
   }
 
   /** Deletes a key and reports whether an entry existed. */
   async delete(key: K): Promise<boolean> {
     validateKey(key)
     log.verbose('FlashStore', 'delete(%s)', key)
+    const normalizedKey = normalizeKey(key)
     const deleted = await this.db.transaction(() => {
-      const exists = this.db.doesExist(key)
-      if (exists) this.db.removeSync(key)
+      const exists = this.db.doesExist(normalizedKey)
+      if (exists) this.db.removeSync(normalizedKey)
       return exists
     })
     if (operations.hasSubscribers) operations.publish({ operation: 'delete' })
@@ -150,8 +161,12 @@ export class FlashStore<K extends StoreKey = StoreKey, V = unknown> {
     validateOptions(options)
     if (options.limit === 0) return
     const reverse = options.reverse ?? false
-    const lower = options.gte ?? options.gt
-    const upper = options.lte ?? options.lt
+    const lowerBound = options.gte ?? options.gt
+    const upperBound = options.lte ?? options.lt
+    const lower =
+      lowerBound === undefined ? undefined : normalizeKey(lowerBound)
+    const upper =
+      upperBound === undefined ? undefined : normalizeKey(upperBound)
     const range = {
       start: reverse ? upper : lower,
       end: reverse ? lower : upper,
@@ -170,7 +185,7 @@ export class FlashStore<K extends StoreKey = StoreKey, V = unknown> {
         (typeof key !== 'string' || !key.startsWith(options.prefix))
       )
         continue
-      yield [key, value]
+      yield [key, JSON.parse(value)]
       if (++count === options.limit) break
     }
   }
@@ -193,14 +208,14 @@ export class FlashStore<K extends StoreKey = StoreKey, V = unknown> {
     return this.entries()
   }
 
-  /** Invokes the callback once per entry in key order. */
+  /** Awaits each callback in snapshot key order; stops and rejects on the first failure. */
   async forEach(
-    callback: (value: V, key: K, store: this) => void,
+    callback: (value: V, key: K, store: this) => unknown,
     thisArg?: unknown,
   ): Promise<void> {
     log.verbose('FlashStore', 'forEach()')
     for await (const [key, value] of this)
-      callback.call(thisArg, value, key, this)
+      await callback.call(thisArg, value, key, this)
   }
 
   /** Closes the database after outstanding writes; repeated calls are safe. */

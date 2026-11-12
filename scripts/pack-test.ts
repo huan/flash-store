@@ -67,6 +67,9 @@ try {
     const map: Map<string, number> = sync
     const options: IteratorOptions<string> = { gte: 'a' }
     void store.keys(options)
+    const values: number[] = []
+    void store.forEach(value => values.push(value))
+    void store.forEach(async value => { await Promise.resolve(value) })
     void map
     sync.set('a', 1)
   `,

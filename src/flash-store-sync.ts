@@ -6,7 +6,11 @@
 import { log } from './config.ts'
 import { FlashStore, type StoreKey } from './flash-store.ts'
 
-/** In-memory Map backed by asynchronous LMDB writes; await ready() before reading restored data. */
+/**
+ * In-memory Map backed by asynchronous LMDB writes.
+ * Await ready() before reading restored data; detected write failures reject further mutations.
+ * Restored entries follow LMDB key order rather than their original insertion order.
+ */
 export class FlashStoreSync<K extends StoreKey = StoreKey, V = unknown>
   implements Map<K, V>
 {
@@ -19,7 +23,7 @@ export class FlashStoreSync<K extends StoreKey = StoreKey, V = unknown>
   private clearedDuringLoad = false
   private pending: Promise<void>
   private closing = false
-  private failureReported = false
+  private failure?: { error: unknown }
 
   /** Opens the backing store and starts restoring its cache. */
   constructor(workdir = '.flash-store-sync') {
@@ -43,9 +47,10 @@ export class FlashStoreSync<K extends StoreKey = StoreKey, V = unknown>
     }
   }
 
-  /** Serialize writes behind initialization and retain failures for lifecycle calls. */
+  /** Serialize writes behind initialization; reject mutations after a detected failure. */
   private enqueue(action: () => Promise<unknown>): void {
     if (this.closing) throw new Error('Store is closing or closed')
+    if (this.failure) throw this.failure.error
     this.pending = this.pending.then(async () => {
       await action()
     })
@@ -55,8 +60,8 @@ export class FlashStoreSync<K extends StoreKey = StoreKey, V = unknown>
   /** Report background errors once while retaining the rejection for lifecycle calls. */
   private observeFailure(): void {
     void this.pending.catch((error: unknown) => {
-      if (!this.failureReported) {
-        this.failureReported = true
+      if (!this.failure) {
+        this.failure = { error }
         log.error('CacheStore', 'Background operation failed: %s', error)
       }
     })
@@ -72,20 +77,25 @@ export class FlashStoreSync<K extends StoreKey = StoreKey, V = unknown>
     await this.pending
   }
 
-  /** Waits for writes and closes the backing store, including when a write failed. */
+  /** Waits for writes and closes the backing store, preserving write and close failures. */
   async close(): Promise<void> {
     this.closing = true
     try {
       await this.ready()
-    } finally {
-      await this.flashStore.close()
+    } catch (error) {
+      try {
+        await this.flashStore.close()
+      } catch (closeError) {
+        throw new AggregateError([error, closeError], 'Write and close failed')
+      }
+      throw error
     }
+    await this.flashStore.close()
   }
 
-  /** Waits for successful writes, then closes and removes the database directory. */
+  /** Closes even on write failure; removes the directory only after successful writes. */
   async destroy(): Promise<void> {
-    this.closing = true
-    await this.ready()
+    await this.close()
     await this.flashStore.destroy()
   }
 

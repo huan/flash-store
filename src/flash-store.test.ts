@@ -8,6 +8,7 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import { open } from 'lmdb'
 import DefaultStore, { FlashStore, VERSION } from './mod.ts'
 
 test('public entry point exports the package API', () => {
@@ -37,6 +38,36 @@ test('persists JSON values, reports falsey keys, and reopens', async (t) => {
   await reopened.clear()
   assert.equal(await reopened.size, 0)
   await reopened.destroy()
+})
+
+test('serializes each value once and reads the resulting JSON', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const raw = open<unknown, string>({ path: dir, encoding: 'json' })
+  await raw.put('existing', { text: 'existing' })
+  await raw.close()
+  const store = new FlashStore<string, unknown>(dir)
+  t.after(() => store.close())
+  assert.deepEqual(await store.get('existing'), { text: 'existing' })
+  let calls = 0
+  await store.set('value', { toJSON: () => ({ calls: ++calls, text: 'é😀' }) })
+  assert.equal(calls, 1)
+  assert.deepEqual(await store.get('value'), { calls: 1, text: 'é😀' })
+  assert.deepEqual(await Array.fromAsync(store.values()), [
+    { text: 'existing' },
+    { calls: 1, text: 'é😀' },
+  ])
+  await assert.rejects(
+    () => store.set('invalid', undefined),
+    /JSON serializable/,
+  )
+  await store.close()
+  const reopened = open<unknown, string>({ path: dir, encoding: 'json' })
+  try {
+    assert.deepEqual(reopened.get('value'), { calls: 1, text: 'é😀' })
+  } finally {
+    await reopened.close()
+  }
 })
 
 test('range boundaries, reverse, limits, and Unicode prefixes', async (t) => {
@@ -88,6 +119,101 @@ test('numeric keys sort naturally and early iteration can close', async (t) => {
   }
   await assert.rejects(() => store.set(Number.NaN, 'bad'), /Keys/)
   await store.close()
+})
+
+test('treats negative zero as zero in keys and range bounds', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const store = new FlashStore<number, string>(dir)
+  await store.set(-1, 'negative')
+  await store.set(-0, 'zero')
+  await store.set(1, 'positive')
+  assert.equal(await store.get(0), 'zero')
+  assert.equal(await store.has(0), true)
+  await store.set(0, 'updated')
+  assert.equal(await store.get(-0), 'updated')
+  assert.equal(await store.size, 3)
+  assert.deepEqual(await Array.fromAsync(store.keys()), [-1, 0, 1])
+  assert.deepEqual(await Array.fromAsync(store.keys({ gte: -0 })), [0, 1])
+  assert.deepEqual(await Array.fromAsync(store.keys({ gt: -0 })), [1])
+  assert.deepEqual(await Array.fromAsync(store.keys({ lt: -0 })), [-1])
+  assert.deepEqual(
+    await Array.fromAsync(store.keys({ lte: -0, reverse: true })),
+    [0, -1],
+  )
+  await store.close()
+  const reopened = new FlashStore<number, string>(dir)
+  assert.equal(await reopened.get(-0), 'updated')
+  assert.equal(await reopened.delete(-0), true)
+  assert.equal(await reopened.has(0), false)
+  await reopened.destroy()
+})
+
+test('forEach awaits callbacks sequentially and preserves callback arguments', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const store = new FlashStore<string, number>(dir)
+  t.after(() => store.close())
+  await store.set('a', 1)
+  await store.set('b', 2)
+
+  const gate = Promise.withResolvers<void>()
+  const started = Promise.withResolvers<void>()
+  const events: string[] = []
+  const operation = store.forEach(async (value, key, actualStore) => {
+    assert.equal(actualStore, store)
+    events.push(`start ${key}:${value}`)
+    if (key === 'a') {
+      started.resolve()
+      await gate.promise
+    }
+    events.push(`end ${key}`)
+  })
+  await started.promise
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    assert.deepEqual(events, ['start a:1'])
+  } finally {
+    gate.resolve()
+  }
+  await operation
+  assert.deepEqual(events, ['start a:1', 'end a', 'start b:2', 'end b'])
+
+  const context = { values: [] as number[] }
+  await store.forEach(function (this: typeof context, value) {
+    this.values.push(value)
+  }, context)
+  assert.deepEqual(context.values, [1, 2])
+})
+
+test('forEach stops and propagates callback failures', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const store = new FlashStore<string, number>(dir)
+  t.after(() => store.close())
+  await store.set('a', 1)
+  await store.set('b', 2)
+  const visited: string[] = []
+  const failure = new Error('callback failed')
+  await assert.rejects(
+    store.forEach(async (_, key) => {
+      visited.push(key)
+      await Promise.resolve()
+      throw failure
+    }),
+    (error: unknown) => error === failure,
+  )
+  assert.deepEqual(visited, ['a'])
+  visited.length = 0
+  await assert.rejects(
+    store.forEach((_, key) => {
+      visited.push(key)
+      throw failure
+    }),
+    (error: unknown) => error === failure,
+  )
+  assert.deepEqual(visited, ['a'])
+  assert.deepEqual(await Array.fromAsync(store.keys()), ['a', 'b'])
 })
 
 test('destroy removes its database directory', async () => {

@@ -57,6 +57,18 @@ Keys are finite numbers or strings without null characters; values use JSON
 serialization. Numeric keys sort naturally before strings. LMDB imposes a
 maximum encoded key size. See the [LMDB documentation](https://github.com/kriszyp/lmdb-js#keys).
 
+Values are serialized with `JSON.stringify` and read back with `JSON.parse`.
+This is not a lossless round trip for every JavaScript value: for example,
+`Date` becomes a string, `NaN` and infinities become `null`, and properties
+whose values are `undefined` are omitted. Top-level `undefined`, circular
+objects, and `BigInt` cannot be stored. The TypeScript value type `V` is not
+validated against the decoded JSON, so it may not match the runtime value.
+Use JSON-compatible values and validate decoded data when its shape matters.
+
+Async iteration uses a snapshot in LMDB key order, not Map insertion order.
+`forEach` awaits each callback sequentially and stops on the first error,
+rejecting its returned promise. `FlashStoreSync.forEach` remains synchronous.
+
 Iteration accepts `gt`, `gte`, `lt`, `lte`, `reverse`, `limit`, or a string
 `prefix`. Do not combine a prefix with range bounds, or two bounds on the same
 side. `delete` resolves to whether a key existed.
@@ -69,9 +81,17 @@ directory. Both reject on failure.
 
 `FlashStoreSync` maintains a full in-memory Map and writes changes in order in
 the background. Await `ready()` before reading restored data and to observe
-write failures. `close()` and `destroy()` wait for queued writes and reject on
-failure. Until `ready()` completes, reads and delete return values only reflect
-the cache loaded so far.
+write failures. After a detected write failure, further mutations throw; close
+and reopen the store to recover. Mutations queued before the failure is detected
+may remain in the cache without being persisted. `close()` and `destroy()` wait
+for queued writes and close the database even on failure. `destroy()` removes
+the directory only if writes succeeded. Until `ready()` completes, reads and
+delete return values only reflect the cache loaded so far.
+
+The cache iterates in its current insertion order, but reopening restores
+entries in LMDB key order rather than their original insertion order. Mutations
+during restoration may also affect the cache order. The cache holds the values
+supplied to it; after reopening, values reflect the JSON round trip above.
 
 ## Diagnostics
 

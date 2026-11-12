@@ -47,13 +47,78 @@ test('clear during initialization and destroy wait for queued writes', async (t)
   await store.destroy()
 })
 
+test('persists and restores zero keys with Map equality', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'flash-store-sync-'))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const store = new FlashStoreSync<number, string>(dir)
+  store.set(-0, 'zero')
+  await store.ready()
+  await store.close()
+  const reopened = new FlashStoreSync<number, string>(dir)
+  await reopened.ready()
+  assert.equal(reopened.get(0), 'zero')
+  assert.equal(reopened.get(-0), 'zero')
+  assert.deepEqual([...reopened.keys()], [0])
+  assert.equal(reopened.delete(-0), true)
+  await reopened.ready()
+  await reopened.close()
+  const backing = new FlashStore<number, string>(dir)
+  assert.equal(await backing.has(0), false)
+  await backing.destroy()
+})
+
 test('write failures surface through ready and close', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'flash-store-sync-'))
   t.after(() => rm(dir, { recursive: true, force: true }))
   const store = new FlashStoreSync<string, unknown>(dir)
   store.set('bad', undefined)
+  store.set('queued', 1)
   await assert.rejects(store.ready(), /JSON serializable/)
+  assert.throws(() => store.set('good', 1), /JSON serializable/)
+  assert.throws(() => store.delete('bad'), /JSON serializable/)
+  assert.throws(() => store.clear(), /JSON serializable/)
+  assert.equal(store.has('good'), false)
   await assert.rejects(store.close(), /JSON serializable/)
+  const reopened = new FlashStore<string, unknown>(dir)
+  assert.equal(await reopened.get('queued'), undefined)
+  await reopened.destroy()
+})
+
+test('destroy closes the backing store after a write failure without deleting data', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'flash-store-sync-'))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const store = new FlashStoreSync<string, unknown>(dir)
+  store.set('saved', 1)
+  store.set('bad', undefined)
+  await assert.rejects(store.destroy(), /JSON serializable/)
+  const backing: FlashStore<string, unknown> = Reflect.get(store, 'flashStore')
+  await assert.rejects(backing.get('saved'), /closed/i)
+  const reopened = new FlashStore<string, unknown>(dir)
+  assert.equal(await reopened.get('saved'), 1)
+  await reopened.destroy()
+})
+
+test('close preserves both write and close failures', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'flash-store-sync-'))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const store = new FlashStoreSync<string, unknown>(dir)
+  const backing: FlashStore<string, unknown> = Reflect.get(store, 'flashStore')
+  const close = backing.close.bind(backing)
+  backing.close = async () => {
+    throw new Error('close failed')
+  }
+  try {
+    store.set('bad', undefined)
+    await assert.rejects(store.close(), (error: unknown) => {
+      assert.ok(error instanceof AggregateError)
+      assert.match(error.errors[0].message, /JSON serializable/)
+      assert.match(error.errors[1].message, /close failed/)
+      return true
+    })
+  } finally {
+    backing.close = close
+    await close()
+  }
 })
 
 test('Map operations reflect cached data and queue persistence', async (t) => {
