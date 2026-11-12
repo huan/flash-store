@@ -2,9 +2,7 @@
 
 <!-- markdownlint-disable MD013 -->
 
-[![Powered by SQLite](https://img.shields.io/badge/Powered%20By-SQLite-green.svg)](https://https://www.sqlite.org/)
-[![Powered by LevelDB](https://img.shields.io/badge/Powered%20By-LevelDB-green.svg)](https://leveldb.org/)
-[![Powered by RocksDB](https://img.shields.io/badge/Powered%20By-RocksDB-green.svg)](https://rocksdb.org/)
+[![Powered by LMDB](https://img.shields.io/badge/Powered%20By-LMDB-green.svg)](https://github.com/kriszyp/lmdb-js)
 [![Powered by TypeScript](https://img.shields.io/badge/Powered%20By-TypeScript-blue.svg)](https://www.typescriptlang.org/)
 [![ES Modules](https://img.shields.io/badge/ES-Modules-brightgreen)](https://github.com/Chatie/tsconfig/issues/16)
 
@@ -15,13 +13,13 @@
 [![Downloads](http://img.shields.io/npm/dm/flash-store.svg?style=flat-square)](https://npmjs.org/package/flash-store)
 [![node](https://img.shields.io/node/v/flash-store.svg?maxAge=604800)](https://nodejs.org/)
 
-FlashStore is Key-Value persistent storage with easy to use ES6 Map-like API(both Async and Sync support), powered by LevelDB and TypeScript.
+FlashStore is persistent key-value storage with asynchronous and synchronous Map-like APIs, powered by LMDB.
 
 ![flash store](https://huan.github.io/flash-store/images/flash-store.png)
 
 ## Requirements
 
-1. Node.js v10 or above
+Node.js 26 or newer and npm 11 or newer. The npm package is ESM-only.
 
 ## Examples
 
@@ -43,175 +41,144 @@ await flashStore.set(1, 'a')
 console.log(`key: 1, value: ${await flashStore.get(1)}`)
 // Output: 'a'
 
-await flashStore.del(1)
+await flashStore.delete(1)
 console.log(`key: 1, value: ${await flashStore.get(1)}`)
 // Output: undefined
+await flashStore.close()
 ```
-
-## Supported Backend
-
-| Backend | Flash Store | Install NPM Command |
-| :--- | :--- | :--- |
-| LevelDB |v1.0 | `npm install flash-store@1` |
-| SQLite | v0.20 | `npm install flash-store@0.20` |
-| Medea | v0.18 | ~~npm install flash-store@0.18~~ (deprecated) |
-| SnapDB | v0.16 | ~~npm install flash-store@0.16~~ (deprecated) |
-| RocksDB | v0.14 | `npm install flash-store@0.14` |
-| LevelDB |v0.12 | `npm install flash-store@0.12` |
-
-> SnapDB & Medea were all deprecated because of lots of unknown bugs.
 
 ## API Reference
 
 ### `FlashStore`
 
-FlashStore implements the Standard ES6 Map API with Async modification, powered by [async-map-like](https://github.com/huan/async-map-like)
+`FlashStore` provides async `set`, `get`, `has`, `delete`, `clear`, `forEach`,
+and `size`, plus async iteration through `entries`, `keys`, and `values`.
+Keys are finite numbers or strings without null characters; values use JSON
+serialization. Numeric keys sort naturally before strings. LMDB imposes a
+maximum encoded key size. See the [LMDB documentation](https://github.com/kriszyp/lmdb-js#keys).
 
-```ts
-/**
- * ES6 Map API with Async
- */
-export interface AsyncMap<K = any, V = any> {
-  [Symbol.asyncIterator]() : AsyncIterableIterator<[K, V]>
-  size                     : Promise<number>
+Values are serialized with `JSON.stringify` and read back with `JSON.parse`.
+This is not a lossless round trip for every JavaScript value: for example,
+`Date` becomes a string, `NaN` and infinities become `null`, and properties
+whose values are `undefined` are omitted. Top-level `undefined`, circular
+objects, and `BigInt` cannot be stored. The TypeScript value type `V` is not
+validated against the decoded JSON, so it may not match the runtime value.
+Use JSON-compatible values and validate decoded data when its shape matters.
 
-  clear   ()                 : Promise<void>
-  delete  (key: K)           : Promise<void>
-  entries()                  : AsyncIterableIterator<[K, V]>
-  get     (key: K)           : Promise<V | undefined>
-  has     (key: K)           : Promise<boolean>
-  keys    ()                 : AsyncIterableIterator<K>
-  set     (key: K, value: V) : Promise<void>
-  values  ()                 : AsyncIterableIterator<V>
-}
+Async iteration uses a snapshot in LMDB key order, not Map insertion order.
+`forEach` awaits each callback sequentially and stops on the first error,
+rejecting its returned promise. `FlashStoreSync.forEach` remains synchronous.
 
-class FlashStore<K, V> implements AsyncMap<K, V> {}
-```
+Iteration accepts `gt`, `gte`, `lt`, `lte`, `reverse`, `limit`, or a string
+`prefix`. Do not combine a prefix with range bounds, or two bounds on the same
+side. A prefix scan seeks directly to matching string keys and stops after the
+last match, so it does not read unrelated entries. `delete` resolves to whether
+a key existed.
+
+`close()` waits for outstanding writes. `destroy()` closes and **deletes the
+entire database directory**, so use a dedicated directory and never a shared
+directory. Both reject on failure.
 
 ### `FlashStoreSync`
 
-FlashStoreSync implements the Standard ES6 Map API:
+`FlashStoreSync` maintains a full in-memory Map and writes changes in order in
+the background. `set()` and `delete()` validate keys, and `set()` serializes
+the value immediately: invalid keys or non-JSON values throw without changing
+the cache, and later changes to a stored object are not persisted unless it is
+set again. The cache still holds the original object, so it reflects such
+changes until reopened. Await `ready()` before reading restored data and to
+observe write failures. After a detected write failure, further mutations throw; close
+and reopen the store to recover. Mutations queued before the failure is detected
+may remain in the cache without being persisted. `close()` and `destroy()` wait
+for queued writes and close the database even on failure. `destroy()` removes
+the directory only if writes succeeded. Until `ready()` completes, reads and
+delete return values only reflect the cache loaded so far.
 
-```ts
-class FlashStoreSync<K, V> implements Map<K, V> {}
-```
+The cache iterates in its current insertion order, but reopening restores
+entries in LMDB key order rather than their original insertion order. Mutations
+during restoration may also affect the cache order. The cache holds the values
+supplied to it; after reopening, values reflect the JSON round trip above.
 
-1. You get a sync API at the cost of all your data have to be kept in memory.
-1. The data will be async writing back to disk for persistent storage in background.
-1. The performance of `FlashStoreSync` can be expected high because it's all in memory.
+## Diagnostics
+
+The `flash-store.operation` Node diagnostics channel publishes `{ operation }`
+after successful `set`, `delete`, and `clear` operations. Messages contain no
+keys, values, or paths. The existing exported `log` remains available; its
+configured log level determines what application data it logs.
+
+## Development
+
+Node executes TypeScript directly; `npm test` performs type-checking, Biome
+checks, and Node tests without building. `npm run test:deno` runs the same unit
+tests on Deno. `npm run coverage:node` and `npm run coverage:deno` enforce
+independently measured baselines and generate local reports. `npm run test:pack`
+builds the package and verifies it in an isolated npm consumer.
+
+### Benchmark
+
+Run `npm run benchmark` to compare FlashStore's public API with native LMDB
+using 5,000 entries and six paired trials. For example:
+`npm run benchmark -- --count 10000 --duration 500 --trials 6 --dir /path/to/disk --memory-dir /dev/shm`.
+Duration is the minimum sample length in milliseconds.
+
+The report has three tables:
+
+- **API overhead** runs on memory-backed storage (`/dev/shm` by default on
+  Linux) so fsync latency does not hide per-call costs. It measures seeded
+  random reads, ordered iteration, and inserts and deletes, sequentially and
+  in batches of 32. Reads and scans give every variant the same calibrated
+  pass count; mutations repeat insert-then-delete cycles of 50 or 256 absent
+  keys until each phase lasts at least `--duration`.
+- **Diagnostics** add one FlashStore behavior to native LMDB: an async call
+  per read, an async generator per scanned entry, or the conditional
+  `remove(key, IF_EXISTS)` that lets `delete()` report whether a key existed
+  (a plain `remove()` resolves true even for absent keys). When a variant's
+  ratio matches FlashStore's, that behavior explains the overhead. Each row
+  also shows FlashStore and native LMDB throughput from the same trials.
+- **Durable mutations** run on `--dir` (the OS temporary directory by
+  default) with fixed samples: 50 sequential and 256 batched inserts and
+  deletes. Commit latency usually dominates, so similar numbers are expected.
+
+When `/dev/shm` is unavailable, the memory mode is skipped; pass
+`--memory-dir` to choose another existing directory or `--no-memory` to skip
+it. The filesystem type is reported, and only tmpfs or ramfs is labeled as
+memory-backed. The memory mode checks free space first; lower `--count` for
+small memory filesystems.
+
+Both engines use identical JSON bytes, default durability, and fresh
+databases preloaded in an untimed transaction. FlashStore uses its public
+async API; LMDB uses synchronous `get()`/`getRange()`, JSON decoding,
+asynchronous `put()`, and native `remove()`. This compares usable public APIs,
+not identical internal algorithms. Reads and scans are warm-cache
+measurements, not cold-storage performance. The first trial warms up and
+calibrates reads and scans; each mutation measurement has an untimed warm-up. Full contents and entry
+counts are validated outside timing; timed reads and scans consume an
+identical checksum, checked afterward.
+
+The output shows median operations/second, reciprocal microseconds/operation
+(not latency percentiles), trial ranges, and all sample sizes and durations.
+Variants alternate order between trials. Ratios are medians of per-trial
+paired ratios. Paired ranges crossing 1 are labeled mixed/tied; ranges are
+descriptive, not confidence intervals. With 5,000 cached entries, ratios are
+close to worst-case overhead; larger datasets spend more time in LMDB.
+
+Temporary databases are removed after each trial. Results depend on the
+machine and filesystem; there are no CI performance thresholds. The default
+workload targets less than a minute on the test machine, not on every
+filesystem. Run `node --test scripts/benchmark.integration.test.ts` to check
+the benchmark CLI, its option validation, and temporary-directory cleanup.
 
 ## Document
 
-See [auto generated docs](https://huan.github.io/flash-store)
+See the [documentation](https://huan.github.io/flash-store).
 
 * [ECMAScript 6: Maps - 2ality – JavaScript and more](http://2ality.com/2015/01/es6-maps-sets.html)
 
-## See Also
-
-1. [Node.js databases: an embedded database using LevelDB](https://blog.yld.io/2016/10/24/node-js-databases-an-embedded-database-using-leveldb)
-2. [How to Cook a Graph Database in a Night - LevelGraph](http://nodejsconfit.levelgraph.io/)
-3. [Graph database JS style for Node.js and the Browser. Built upon LevelUp and LevelDB.](https://github.com/levelgraph/levelgraph)
-4. [浅析 BigTable 和 LevelDB 的实现](http://draveness.me/bigtable-leveldb.html)
-
-## Known Issues
-
-1. The `gte` and `lte` in `options` do not work property. ([#4](https://github.com/huan/flash-store/issues/4))
-
 ## Version History
 
-### master v1.3 (Sep 12, 2021)
+### v2.0
 
-1. ES Modules support ([#93](https://github.com/huan/flash-store/pull/93))
-1. Remove default `workdir` in `FlashStore` constructor.
-
-### v1.0 (Aug 16, 2021) LevelDB v7.0
-
-[![Powered by LevelDB](https://img.shields.io/badge/Powered%20By-LevelDB-green.svg)](https://www.npmjs.com/package/level)
-
-LevelDB v7.0.0 support.
-
-### v0.20 Apr 2020 SQLite as Backend
-
-1. We hardcoded the key type to be `string` only in this version.
-1. We decide to try [better-sqlite3](https://www.npmjs.com/package/better-sqlite3) as it claim is very fast.
-1. The other alternates (would love to try in the future if necessary):
-    1. TypeScript: [sqlite](https://www.npmjs.com/package/sqlite)
-    1. WebAssembly: [sql.js](https://www.npmjs.com/package/sql.js)
-
-### ~~v0.18 Feb 2019 - Medea as Backend~~
-
-[![Powered by Medea](https://img.shields.io/badge/Powered%20By-Medea-green.svg)](https://www.npmjs.com/package/medeadown)
-
-DEPRECATED: Due to [#79](https://github.com/huan/flash-store/issues/79) [#74](https://github.com/huan/flash-store/issues/74) and also it is very unstable in production as my experiences. (e.g. memory leak & block event loop)
-
-1. Switch from SnapDB to [MedeaDown](https://github.com/medea/medeadown)
-
-[Medea](https://github.com/medea/medea) is a persistent key-value storage library that runs everywhere Node runs.
-
-> "It is a pure JS implementation of leveldown and it's almost as fast."
-> &mdash; @Raynos [link](https://github.com/medea/medeadown/issues/2#issue-38431966)  
->  
-> "The LevelDOWN-compatible wrapper for Medea really opens up the possibility to reuse the modules that have already been created around the LevelUP ecosystem."
-> &mdash; @kevinswiber [link](https://github.com/medea/medeadown/issues/2#issuecomment-49785861)
-
-Known Issues: [FlashStore 会写满磁盘的问题 #155](https://github.com/wechaty/wechaty-puppet-padplus/issues/155)
-
-```ts
-async function compact (store: FlashStore): Promise<void> {
-  await store.size
-  const db = (store as any).levelDb.db.db.db
-  await new Promise((resolve, reject) => {
-    db.compact((err: any) => {
-      if (err) {
-        return reject(err)
-      }
-      resolve()
-    })
-  })
-}
-```
-
-### v0.16 May 2019 - SnapDB as Backend
-
-[![Powered by SnapDB](https://img.shields.io/badge/Powered%20By-SnapDB-green.svg)](https://www.npmjs.com/package/snap-db)
-
-1. Switch from RocksDB to [SnapDB](https://github.com/ClickSimply/snap-db) [#45](https://github.com/huan/flash-store/issues/45)
-1. [#50](https://github.com/huan/flash-store/issues/50) has been fixed. ~~WARN: Do not use this version because it has known issues~~
-
-### v0.14 May 2019 - RocksDB as Backend
-
-1. Switch from LevelDB to [RocksDB](https://www.npmjs.com/package/rocksdb) [#34](https://github.com/huan/flash-store/issues/34)
-
-### v0.12 Jan 2019 - LevelDB as Backend
-
-1. Use [LevelDB](https://github.com/level/leveldown) as backend to skip the compiling when install.
-1. Using leveldb official typings from `@types/`
-
-### v0.7 Aug 2018 - Nosql-LevelDB as Backend
-
-1. Use [nosql-leveldb](https://github.com/snowyu/node-nosql-leveldb) as backend to prevent segfault.
-
-### v0.6 Jul 2018
-
-1. Upgrade to TypeScript 3.0
-
-### v0.4 Jun 2018
-
-#### 1. Refactor API to implement ES6 `Map` interface
-
-1. Update the API to ES6 `Map`-like, the difference is that FlashStore is all **async**.
-
-#### 2. Add `FlashStoreSync` as a in-memory **Write-back Cache** for Flash-Store
-
-Add a new class `FlashStoreSync` which is a in-memory full loaded **Write-back Cache** for Flash-Store:
-
-1. Writes directly to `cache`, lazy writes to `store`.
-1. Reads from cache, never read-miss because cache have the full data of the store which will never expire.
-1. API of `FlashStoreSync` is the same as the ES6 `Map`
-
-### v0.2 Sep 2017
-
-Init version, API is LevelDB-like.
+1. LMDB-backed storage, ESM-only packaging, and Node.js 26.
 
 ## FAQ
 

@@ -2,101 +2,98 @@ name: NPM
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
-  build:
-    name: Build
+  test:
     strategy:
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-        node:
-          - 14
-          - 16
-
+        os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v2
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 26
           cache: npm
-          cache-dependency-path: package.json
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.8
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:deno
 
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Test
-        run: npm test
-
-  pack:
-    name: Pack
-    needs: build
+  coverage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 16
+          node-version: 26
           cache: npm
-          cache-dependency-path: package.json
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.8
+      - run: npm ci
+      - run: npm run coverage:node
+      - run: npm run coverage:deno
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: node-coverage
+          path: |
+            coverage/node/lcov.info
+            coverage/node/html/
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: deno-coverage
+          path: |
+            coverage/deno/lcov.info
+            coverage/deno/raw/html/
 
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Generate Package JSON
-        run: ./scripts/generate-package-json.sh
-
-      - name: Pack Testing
-        run: ./scripts/npm-pack-testing.sh
+  pack:
+    needs: [test, coverage]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+      - run: npm ci
+      - run: npm run test:pack
 
   publish:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/v'))
-    name: Publish
-    needs:
-      - build
-      - pack
+    needs: [test, coverage, pack]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # npm Trusted Publishing exchanges this OIDC token for a short-lived publish token.
+      id-token: write
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 16
+          node-version: 26
           registry-url: https://registry.npmjs.org/
-          cache: npm
-          cache-dependency-path: package.json
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Generate Package JSON
-        run: ./scripts/generate-package-json.sh
-
-      - name: Set Publish Config
-        run: ./scripts/package-publish-config-tag.sh
-
-      - name: Build Dist
-        run: npm run dist
-
-      - name: Check Branch
-        id: check-branch
+          # npm advises against dependency caches in release builds.
+          package-manager-cache: false
+      - name: Require npm with Trusted Publishing support
         run: |
-          if [[ ${{ github.ref }} =~ ^refs/heads/(main|v[0-9]+\.[0-9]+.*)$ ]]; then
-              echo ::set-output name=match::true
-          fi  # See: https://stackoverflow.com/a/58869470/1123955
-      - name: Is A Publish Branch
-        if: steps.check-branch.outputs.match == 'true'
+          node -e '
+            const [major, minor, patch] = process.argv[1].split(".").map(Number)
+            if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1))))
+              throw new Error(`npm ${process.argv[1]} is older than 11.5.1`)
+          ' "$(npm --version)"
+      - run: npm ci
+      - name: Publish release branches
+        shell: bash
         run: |
-          NAME=$(npx pkg-jq -r .name)
-          VERSION=$(npx pkg-jq -r .version)
-          if npx version-exists "$NAME" "$VERSION"
-          then echo "$NAME@$VERSION exists on NPM, skipped."
-          else npm publish
+          if [[ "$GITHUB_REF" =~ ^refs/heads/(main|v[0-9]+\.[0-9]+.*)$ ]]; then
+            VERSION="$(node -p "require('./package.json').version")"
+            if [[ "${VERSION%%+*}" == *-* ]]; then TAG=next; else TAG=latest; fi
+            npm publish --tag "$TAG"
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Is Not A Publish Branch
-        if: steps.check-branch.outputs.match != 'true'
-        run: echo 'Not A Publish Branch'

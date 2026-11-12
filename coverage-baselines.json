@@ -1,0 +1,4 @@
+{
+  "node": { "lines": 95.0, "branches": 96.6, "functions": 90.0 },
+  "deno": { "lines": 90.9, "branches": 95.9, "functions": 90.0 }
+}
