@@ -70,10 +70,12 @@ Async iteration uses a snapshot in LMDB key order, not Map insertion order.
 rejecting its returned promise. `FlashStoreSync.forEach` remains synchronous.
 
 Iteration accepts `gt`, `gte`, `lt`, `lte`, `reverse`, `limit`, or a string
-`prefix`. Do not combine a prefix with range bounds, or two bounds on the same
-side. A prefix scan seeks directly to matching string keys and stops after the
-last match, so it does not read unrelated entries. `delete` resolves to whether
-a key existed.
+`prefix`. Range bounds and prefixes apply to keys, including when using
+`values()`; they do not filter values. `gte` and `lte` include their bounds,
+while `gt` and `lt` exclude them. Do not combine a prefix with range bounds, or
+two bounds on the same side. A prefix scan seeks directly to matching string
+keys and stops after the last match, so it does not read unrelated entries.
+`delete` resolves to whether a key existed.
 
 `close()` waits for outstanding writes. `destroy()` closes and **deletes the
 entire database directory**, so use a dedicated directory and never a shared
