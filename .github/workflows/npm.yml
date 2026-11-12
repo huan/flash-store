@@ -69,13 +69,25 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/v'))
     needs: [test, coverage, pack]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # npm Trusted Publishing exchanges this OIDC token for a short-lived publish token.
+      id-token: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 26
           registry-url: https://registry.npmjs.org/
-          cache: npm
+          # npm advises against dependency caches in release builds.
+          package-manager-cache: false
+      - name: Require npm with Trusted Publishing support
+        run: |
+          node -e '
+            const [major, minor, patch] = process.argv[1].split(".").map(Number)
+            if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1))))
+              throw new Error(`npm ${process.argv[1]} is older than 11.5.1`)
+          ' "$(npm --version)"
       - run: npm ci
       - name: Publish release branches
         shell: bash
@@ -85,5 +97,3 @@ jobs:
             if [[ "${VERSION%%+*}" == *-* ]]; then TAG=next; else TAG=latest; fi
             npm publish --tag "$TAG"
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
