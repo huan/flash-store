@@ -9,6 +9,13 @@ import { test } from 'node:test'
 import { FlashStore } from './flash-store.ts'
 import { FlashStoreSync } from './flash-store-sync.ts'
 
+/** Make the backing LMDB database reject writes, simulating a storage failure. */
+function failWrites(store: FlashStoreSync<string, unknown>): void {
+  const backing: FlashStore<string, unknown> = Reflect.get(store, 'flashStore')
+  const db: { put: unknown } = Reflect.get(backing, 'db')
+  db.put = () => Promise.reject(new Error('write failed'))
+}
+
 test('loads existing data without overwriting immediate mutations', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'flash-store-sync-'))
   t.after(() => rm(dir, { recursive: true, force: true }))
@@ -67,19 +74,44 @@ test('persists and restores zero keys with Map equality', async (t) => {
   await backing.destroy()
 })
 
+test('persists values as serialized when set and rejects invalid input synchronously', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'flash-store-sync-'))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const store = new FlashStoreSync<string | number, unknown>(dir)
+  const value = { count: 1 }
+  store.set('first', value)
+  value.count = 2
+  store.set('second', value)
+  assert.throws(() => store.set('bad', undefined), /JSON serializable/)
+  assert.throws(() => store.set('bad\0key', 1), /Keys/)
+  assert.throws(() => store.delete(Number.NaN), /Keys/)
+  assert.equal(store.has('bad'), false)
+  await store.ready()
+  await store.close()
+  const reopened = new FlashStore<string, unknown>(dir)
+  assert.deepEqual(await Array.fromAsync(reopened.entries()), [
+    ['first', { count: 1 }],
+    ['second', { count: 2 }],
+  ])
+  await reopened.destroy()
+})
+
 test('write failures surface through ready and close', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'flash-store-sync-'))
   t.after(() => rm(dir, { recursive: true, force: true }))
   const store = new FlashStoreSync<string, unknown>(dir)
-  store.set('bad', undefined)
+  await store.ready()
+  failWrites(store)
+  store.set('bad', 1)
   store.set('queued', 1)
-  await assert.rejects(store.ready(), /JSON serializable/)
-  assert.throws(() => store.set('good', 1), /JSON serializable/)
-  assert.throws(() => store.delete('bad'), /JSON serializable/)
-  assert.throws(() => store.clear(), /JSON serializable/)
+  await assert.rejects(store.ready(), /write failed/)
+  assert.throws(() => store.set('good', 1), /write failed/)
+  assert.throws(() => store.delete('bad'), /write failed/)
+  assert.throws(() => store.clear(), /write failed/)
   assert.equal(store.has('good'), false)
-  await assert.rejects(store.close(), /JSON serializable/)
+  await assert.rejects(store.close(), /write failed/)
   const reopened = new FlashStore<string, unknown>(dir)
+  assert.equal(await reopened.get('bad'), undefined)
   assert.equal(await reopened.get('queued'), undefined)
   await reopened.destroy()
 })
@@ -89,8 +121,10 @@ test('destroy closes the backing store after a write failure without deleting da
   t.after(() => rm(dir, { recursive: true, force: true }))
   const store = new FlashStoreSync<string, unknown>(dir)
   store.set('saved', 1)
-  store.set('bad', undefined)
-  await assert.rejects(store.destroy(), /JSON serializable/)
+  await store.ready()
+  failWrites(store)
+  store.set('bad', 1)
+  await assert.rejects(store.destroy(), /write failed/)
   const backing: FlashStore<string, unknown> = Reflect.get(store, 'flashStore')
   await assert.rejects(backing.get('saved'), /closed/i)
   const reopened = new FlashStore<string, unknown>(dir)
@@ -108,10 +142,12 @@ test('close preserves both write and close failures', async (t) => {
     throw new Error('close failed')
   }
   try {
-    store.set('bad', undefined)
+    await store.ready()
+    failWrites(store)
+    store.set('bad', 1)
     await assert.rejects(store.close(), (error: unknown) => {
       assert.ok(error instanceof AggregateError)
-      assert.match(error.errors[0].message, /JSON serializable/)
+      assert.match(error.errors[0].message, /write failed/)
       assert.match(error.errors[1].message, /close failed/)
       return true
     })

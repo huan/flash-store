@@ -1,6 +1,7 @@
 /**
  * Implements the asynchronous Map-like API over an LMDB environment.
- * It owns the database lifecycle; the synchronous facade builds on this API.
+ * It owns the database lifecycle, key validation, and JSON serialization. The
+ * synchronous facade builds on this API and its internal serialized-write hook.
  */
 import { channel } from 'node:diagnostics_channel'
 import { rm } from 'node:fs/promises'
@@ -26,7 +27,7 @@ export interface IteratorOptions<K extends StoreKey = StoreKey> {
 const operations = channel('flash-store.operation')
 
 /** Reject keys that the configured ordered-binary encoding cannot represent safely. */
-function validateKey(key: StoreKey): void {
+export function validateKey(key: StoreKey): void {
   if (
     (typeof key === 'number' && !Number.isFinite(key)) ||
     (typeof key === 'string' && key.includes('\0')) ||
@@ -37,6 +38,48 @@ function validateKey(key: StoreKey): void {
     )
   }
 }
+
+/** Serialize a value once, rejecting values that JSON cannot represent. */
+export function serialize(value: unknown): string {
+  const serialized = JSON.stringify(value)
+  if (serialized === undefined)
+    throw new TypeError('Value must be JSON serializable')
+  return serialized
+}
+
+/**
+ * Return the smallest string after every string starting with `prefix`, or
+ * undefined when none exists. LMDB orders strings by UTF-8 bytes, which matches
+ * code point order, so matching keys form one contiguous interval.
+ */
+function prefixEnd(prefix: string): string | undefined {
+  const codePoints = Array.from(prefix)
+  while (codePoints.length > 0) {
+    const last = codePoints.pop()?.codePointAt(0)
+    if (last !== undefined && last < 0x10ffff) {
+      // Surrogate code points are not encodable scalar values; skip them.
+      const next = last === 0xd7ff ? 0xe000 : last + 1
+      return codePoints.join('') + String.fromCodePoint(next)
+    }
+  }
+  return undefined
+}
+
+/** Start reverse prefix scans just below the interval end, or at the database end. */
+function prefixRange(prefix: string) {
+  const end = prefixEnd(prefix)
+  return { start: end, reverse: true, exclusiveStart: end !== undefined }
+}
+
+/**
+ * Writes pre-serialized JSON for FlashStoreSync, which serializes at call time.
+ * Internal: mod.ts does not export it, and package exports expose only mod.ts.
+ */
+export let writeSerialized: <K extends StoreKey>(
+  store: FlashStore<K, unknown>,
+  key: K,
+  serialized: string,
+) => Promise<void>
 
 /** Use Map's zero equality; TypeScript represents both signs as the same numeric type. */
 function normalizeKey<K extends StoreKey>(key: K): K {
@@ -82,6 +125,10 @@ export class FlashStore<K extends StoreKey = StoreKey, V = unknown> {
   private readonly db: RootDatabase<string, K>
   private closePromise?: Promise<void>
 
+  static {
+    writeSerialized = (store, key, serialized) => store.write(key, serialized)
+  }
+
   /** Opens an LMDB database in the specified directory. */
   constructor(workdir: string) {
     this.workdir = resolve(workdir)
@@ -102,14 +149,17 @@ export class FlashStore<K extends StoreKey = StoreKey, V = unknown> {
   /** Stores a JSON-serializable value and resolves after its write completes. */
   async set(key: K, value: V): Promise<this> {
     validateKey(key)
-    const serialized = JSON.stringify(value)
-    if (serialized === undefined)
-      throw new TypeError('Value must be JSON serializable')
+    const serialized = serialize(value)
     log.verbose('FlashStore', 'set(%s, %s)', key, typeof value)
+    await this.write(key, serialized)
+    return this
+  }
+
+  /** Writes validated, serialized JSON and publishes the set event on success. */
+  private async write(key: K, serialized: string): Promise<void> {
     log.silly('FlashStore', 'set(%s, %s)', key, serialized)
     await this.db.put(normalizeKey(key), serialized)
     if (operations.hasSubscribers) operations.publish({ operation: 'set' })
-    return this
   }
 
   /** Returns the stored value, or undefined when the key is absent. */
@@ -150,7 +200,11 @@ export class FlashStore<K extends StoreKey = StoreKey, V = unknown> {
     return Promise.resolve().then(() => this.db.getCount())
   }
 
-  /** Iterates a snapshot in LMDB key order, releasing the cursor on early exit. */
+  /**
+   * Iterates a snapshot in LMDB key order, releasing the cursor on early exit.
+   * A prefix seeks to its contiguous key interval and stops on leaving it, so
+   * the cost depends on matching entries rather than database size.
+   */
   async *entries(
     options: IteratorOptions<K> = {},
   ): AsyncIterableIterator<[K, V]> {
@@ -164,24 +218,31 @@ export class FlashStore<K extends StoreKey = StoreKey, V = unknown> {
       lowerBound === undefined ? undefined : normalizeKey(lowerBound)
     const upper =
       upperBound === undefined ? undefined : normalizeKey(upperBound)
-    const range = {
-      start: reverse ? upper : lower,
-      end: reverse ? lower : upper,
-      reverse,
-      exclusiveStart: reverse
-        ? options.lt !== undefined
-        : options.gt !== undefined,
-      inclusiveEnd: reverse
-        ? options.gte !== undefined
-        : options.lte !== undefined,
-    }
+    const { prefix } = options
+    const range =
+      prefix === undefined
+        ? {
+            start: reverse ? upper : lower,
+            end: reverse ? lower : upper,
+            reverse,
+            exclusiveStart: reverse
+              ? options.lt !== undefined
+              : options.gt !== undefined,
+            inclusiveEnd: reverse
+              ? options.gte !== undefined
+              : options.lte !== undefined,
+          }
+        : reverse
+          ? prefixRange(prefix)
+          : { start: prefix }
     let count = 0
     for (const { key, value } of this.db.getRange(range)) {
+      // Matching keys are contiguous, so the first mismatch ends the prefix.
       if (
-        options.prefix !== undefined &&
-        (typeof key !== 'string' || !key.startsWith(options.prefix))
+        prefix !== undefined &&
+        (typeof key !== 'string' || !key.startsWith(prefix))
       )
-        continue
+        break
       yield [key, JSON.parse(value)]
       if (++count === options.limit) break
     }

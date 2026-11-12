@@ -145,6 +145,80 @@ test('range boundaries, reverse, limits, and Unicode prefixes', async (t) => {
   await assert.rejects(() => store.set('invalid\0key', 1), /Keys/)
 })
 
+test('prefix iteration reads only its contiguous key interval', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
+  const store = new FlashStore<string | number, number>(dir)
+  cleanupStore(t, store, dir)
+  const keys = [
+    1,
+    'a',
+    'ab',
+    'ab\u{10ffff}',
+    'ab\u{10ffff}z',
+    'ac',
+    'b',
+    'é',
+    'é😀',
+    'ê',
+  ]
+  for (const [index, key] of keys.entries()) await store.set(key, index)
+  // Count cursor reads to verify that a prefix scan does not visit other entries.
+  const db: { getRange: (options: unknown) => Iterable<unknown> } = Reflect.get(
+    store,
+    'db',
+  )
+  const getRange = db.getRange.bind(db)
+  let reads = 0
+  db.getRange = (options) => ({
+    *[Symbol.iterator]() {
+      for (const entry of getRange(options)) {
+        reads++
+        yield entry
+      }
+    },
+  })
+  const scan = async (options: Parameters<typeof store.keys>[0]) => {
+    reads = 0
+    return { keys: await Array.fromAsync(store.keys(options)), reads }
+  }
+  assert.deepEqual(await scan({ prefix: 'ab' }), {
+    keys: ['ab', 'ab\u{10ffff}', 'ab\u{10ffff}z'],
+    reads: 4,
+  })
+  assert.deepEqual(await scan({ prefix: 'ab', reverse: true }), {
+    keys: ['ab\u{10ffff}z', 'ab\u{10ffff}', 'ab'],
+    reads: 4,
+  })
+  assert.deepEqual(await scan({ prefix: 'ab', reverse: true, limit: 1 }), {
+    keys: ['ab\u{10ffff}z'],
+    reads: 1,
+  })
+  assert.deepEqual(await scan({ prefix: 'é' }), {
+    keys: ['é', 'é😀'],
+    reads: 3,
+  })
+  assert.deepEqual(await scan({ prefix: 'aa' }), { keys: [], reads: 1 })
+  assert.deepEqual(await scan({ prefix: 'aa', reverse: true }), {
+    keys: [],
+    reads: 1,
+  })
+  // 'é' sorts after 'z', so the scan reads it once and stops.
+  assert.deepEqual(await scan({ prefix: 'z' }), { keys: [], reads: 1 })
+  assert.deepEqual(await scan({ prefix: '\u{10ffff}' }), {
+    keys: [],
+    reads: 0,
+  })
+  assert.deepEqual(await scan({ prefix: '\u{10ffff}', reverse: true }), {
+    keys: [],
+    reads: 1,
+  })
+  assert.deepEqual((await scan({ prefix: '', reverse: true, limit: 2 })).keys, [
+    'ê',
+    'é😀',
+  ])
+  assert.deepEqual((await scan({ prefix: '' })).keys, keys.slice(1))
+})
+
 test('numeric keys sort naturally and early iteration can close', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
   t.after(() => rm(dir, { recursive: true, force: true }))

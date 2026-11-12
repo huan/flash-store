@@ -71,7 +71,9 @@ rejecting its returned promise. `FlashStoreSync.forEach` remains synchronous.
 
 Iteration accepts `gt`, `gte`, `lt`, `lte`, `reverse`, `limit`, or a string
 `prefix`. Do not combine a prefix with range bounds, or two bounds on the same
-side. `delete` resolves to whether a key existed.
+side. A prefix scan seeks directly to matching string keys and stops after the
+last match, so it does not read unrelated entries. `delete` resolves to whether
+a key existed.
 
 `close()` waits for outstanding writes. `destroy()` closes and **deletes the
 entire database directory**, so use a dedicated directory and never a shared
@@ -80,8 +82,12 @@ directory. Both reject on failure.
 ### `FlashStoreSync`
 
 `FlashStoreSync` maintains a full in-memory Map and writes changes in order in
-the background. Await `ready()` before reading restored data and to observe
-write failures. After a detected write failure, further mutations throw; close
+the background. `set()` and `delete()` validate keys, and `set()` serializes
+the value immediately: invalid keys or non-JSON values throw without changing
+the cache, and later changes to a stored object are not persisted unless it is
+set again. The cache still holds the original object, so it reflects such
+changes until reopened. Await `ready()` before reading restored data and to
+observe write failures. After a detected write failure, further mutations throw; close
 and reopen the store to recover. Mutations queued before the failure is detected
 may remain in the cache without being persisted. `close()` and `destroy()` wait
 for queued writes and close the database even on failure. `destroy()` removes

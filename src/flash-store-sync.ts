@@ -1,10 +1,18 @@
 /**
  * Provides a synchronous in-memory Map facade with ordered asynchronous write-back.
  * FlashStore owns persistence; ready() is the boundary for observing write failures.
+ * Keys and values are validated and serialized when a mutation is accepted, so
+ * invalid input throws synchronously and later object changes are not persisted.
  */
 
 import { log } from './config.ts'
-import { FlashStore, type StoreKey } from './flash-store.ts'
+import {
+  FlashStore,
+  type StoreKey,
+  serialize,
+  validateKey,
+  writeSerialized,
+} from './flash-store.ts'
 
 /**
  * In-memory Map backed by asynchronous LMDB writes.
@@ -138,6 +146,7 @@ export class FlashStoreSync<K extends StoreKey = StoreKey, V = unknown>
 
   /** Removes a cached entry immediately and queues persistent removal. */
   delete(key: K): boolean {
+    validateKey(key)
     this.enqueue(() => this.flashStore.delete(key))
     if (this.loading) this.touched.add(key)
     return this.cacheMap.delete(key)
@@ -177,9 +186,14 @@ export class FlashStoreSync<K extends StoreKey = StoreKey, V = unknown>
     return value
   }
 
-  /** Updates the cache immediately and queues an ordered persistent write. */
+  /**
+   * Updates the cache immediately and queues an ordered persistent write of the
+   * value's JSON at call time. Throws without changes for invalid keys or values.
+   */
   set(key: K, value: V): this {
-    this.enqueue(() => this.flashStore.set(key, value))
+    validateKey(key)
+    const serialized = serialize(value)
+    this.enqueue(() => writeSerialized(this.flashStore, key, serialized))
     if (this.loading) this.touched.add(key)
     this.cacheMap.set(key, value)
     return this
