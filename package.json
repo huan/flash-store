@@ -18,6 +18,7 @@
     "build": "tsc && node scripts/prepare-package.ts",
     "prepack": "npm run build",
     "demo": "node example/demo.ts",
+    "benchmark": "node scripts/benchmark.ts",
     "lint": "biome check src example scripts tsconfig.json package.json biome.json coverage-baselines.json",
     "typecheck": "tsc --noEmit",
     "test": "npm run typecheck && npm run lint && npm run test:unit",
@@ -44,7 +45,7 @@
   "homepage": "https://github.com/huan/flash-store#readme",
   "dependencies": {
     "brolog": "^1.14.2",
-    "lmdb": "^3.5.9"
+    "lmdb": "~3.5.9"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.7",

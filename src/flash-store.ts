@@ -6,7 +6,7 @@ import { channel } from 'node:diagnostics_channel'
 import { rm } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { parse, resolve } from 'node:path'
-import { open, type RootDatabase } from 'lmdb'
+import { IF_EXISTS, open, type RootDatabase } from 'lmdb'
 import { log, VERSION } from './config.ts'
 
 /** Keys are ordered by LMDB: numbers precede strings and each type is ordered naturally. */
@@ -130,12 +130,9 @@ export class FlashStore<K extends StoreKey = StoreKey, V = unknown> {
   async delete(key: K): Promise<boolean> {
     validateKey(key)
     log.verbose('FlashStore', 'delete(%s)', key)
-    const normalizedKey = normalizeKey(key)
-    const deleted = await this.db.transaction(() => {
-      const exists = this.db.doesExist(normalizedKey)
-      if (exists) this.db.removeSync(normalizedKey)
-      return exists
-    })
+    // A plain remove() resolves true even for absent keys; IF_EXISTS makes LMDB
+    // report this operation's own result, in order with other queued writes.
+    const deleted = await this.db.remove(normalizeKey(key), IF_EXISTS)
     if (operations.hasSubscribers) operations.publish({ operation: 'delete' })
     return deleted
   }

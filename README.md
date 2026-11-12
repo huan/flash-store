@@ -108,6 +108,60 @@ tests on Deno. `npm run coverage:node` and `npm run coverage:deno` enforce
 independently measured baselines and generate local reports. `npm run test:pack`
 builds the package and verifies it in an isolated npm consumer.
 
+### Benchmark
+
+Run `npm run benchmark` to compare FlashStore's public API with native LMDB
+using 5,000 entries and six paired trials. For example:
+`npm run benchmark -- --count 10000 --duration 500 --trials 6 --dir /path/to/disk --memory-dir /dev/shm`.
+Duration is the minimum sample length in milliseconds.
+
+The report has three tables:
+
+- **API overhead** runs on memory-backed storage (`/dev/shm` by default on
+  Linux) so fsync latency does not hide per-call costs. It measures seeded
+  random reads, ordered iteration, and inserts and deletes, sequentially and
+  in batches of 32. Reads and scans give every variant the same calibrated
+  pass count; mutations repeat insert-then-delete cycles of 50 or 256 absent
+  keys until each phase lasts at least `--duration`.
+- **Diagnostics** add one FlashStore behavior to native LMDB: an async call
+  per read, an async generator per scanned entry, or the conditional
+  `remove(key, IF_EXISTS)` that lets `delete()` report whether a key existed
+  (a plain `remove()` resolves true even for absent keys). When a variant's
+  ratio matches FlashStore's, that behavior explains the overhead. Each row
+  also shows FlashStore and native LMDB throughput from the same trials.
+- **Durable mutations** run on `--dir` (the OS temporary directory by
+  default) with fixed samples: 50 sequential and 256 batched inserts and
+  deletes. Commit latency usually dominates, so similar numbers are expected.
+
+When `/dev/shm` is unavailable, the memory mode is skipped; pass
+`--memory-dir` to choose another existing directory or `--no-memory` to skip
+it. The filesystem type is reported, and only tmpfs or ramfs is labeled as
+memory-backed. The memory mode checks free space first; lower `--count` for
+small memory filesystems.
+
+Both engines use identical JSON bytes, default durability, and fresh
+databases preloaded in an untimed transaction. FlashStore uses its public
+async API; LMDB uses synchronous `get()`/`getRange()`, JSON decoding,
+asynchronous `put()`, and native `remove()`. This compares usable public APIs,
+not identical internal algorithms. Reads and scans are warm-cache
+measurements, not cold-storage performance. The first trial warms up and
+calibrates reads and scans; each mutation measurement has an untimed warm-up. Full contents and entry
+counts are validated outside timing; timed reads and scans consume an
+identical checksum, checked afterward.
+
+The output shows median operations/second, reciprocal microseconds/operation
+(not latency percentiles), trial ranges, and all sample sizes and durations.
+Variants alternate order between trials. Ratios are medians of per-trial
+paired ratios. Paired ranges crossing 1 are labeled mixed/tied; ranges are
+descriptive, not confidence intervals. With 5,000 cached entries, ratios are
+close to worst-case overhead; larger datasets spend more time in LMDB.
+
+Temporary databases are removed after each trial. Results depend on the
+machine and filesystem; there are no CI performance thresholds. The default
+workload targets less than a minute on the test machine, not on every
+filesystem. Run `node --test scripts/benchmark.integration.test.ts` to check
+the benchmark CLI, its option validation, and temporary-directory cleanup.
+
 ## Document
 
 See the [documentation](https://huan.github.io/flash-store).

@@ -40,6 +40,34 @@ test('persists JSON values, reports falsey keys, and reopens', async (t) => {
   await reopened.destroy()
 })
 
+test('delete reports existence per call, in order with queued writes', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const store = new FlashStore<string, number>(dir)
+  t.after(() => store.close())
+  await store.set('key', 1)
+  assert.deepEqual(
+    await Promise.all([
+      store.delete('key'),
+      store.delete('key'),
+      store.delete('missing'),
+    ]),
+    [true, false, false],
+  )
+  const [, setThenDelete] = await Promise.all([
+    store.set('queued', 1),
+    store.delete('queued'),
+  ])
+  assert.equal(setThenDelete, true)
+  assert.equal(await store.has('queued'), false)
+  const [deleteThenSet] = await Promise.all([
+    store.delete('queued'),
+    store.set('queued', 2),
+  ])
+  assert.equal(deleteThenSet, false)
+  assert.equal(await store.get('queued'), 2)
+})
+
 test('serializes each value once and reads the resulting JSON', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
   t.after(() => rm(dir, { recursive: true, force: true }))
