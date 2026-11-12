@@ -7,9 +7,24 @@ import { channel, tracingChannel } from 'node:diagnostics_channel'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { test } from 'node:test'
+import { type TestContext, test } from 'node:test'
 import { open } from 'lmdb'
 import DefaultStore, { FlashStore, VERSION } from './mod.ts'
+
+/** Closes the LMDB environment before removing files that Windows keeps locked. */
+function cleanupStore<K extends string | number, V>(
+  t: TestContext,
+  store: FlashStore<K, V>,
+  dir: string,
+): void {
+  t.after(async () => {
+    try {
+      await store.close()
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+}
 
 test('public entry point exports the package API', () => {
   assert.equal(DefaultStore, FlashStore)
@@ -42,9 +57,8 @@ test('persists JSON values, reports falsey keys, and reopens', async (t) => {
 
 test('delete reports existence per call, in order with queued writes', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
   const store = new FlashStore<string, number>(dir)
-  t.after(() => store.close())
+  cleanupStore(t, store, dir)
   await store.set('key', 1)
   assert.deepEqual(
     await Promise.all([
@@ -70,12 +84,11 @@ test('delete reports existence per call, in order with queued writes', async (t)
 
 test('serializes each value once and reads the resulting JSON', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
   const raw = open<unknown, string>({ path: dir, encoding: 'json' })
   await raw.put('existing', { text: 'existing' })
   await raw.close()
   const store = new FlashStore<string, unknown>(dir)
-  t.after(() => store.close())
+  cleanupStore(t, store, dir)
   assert.deepEqual(await store.get('existing'), { text: 'existing' })
   let calls = 0
   await store.set('value', { toJSON: () => ({ calls: ++calls, text: 'é😀' }) })
@@ -100,9 +113,8 @@ test('serializes each value once and reads the resulting JSON', async (t) => {
 
 test('range boundaries, reverse, limits, and Unicode prefixes', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
   const store = new FlashStore<string, number>(dir)
-  t.after(() => store.close())
+  cleanupStore(t, store, dir)
   for (const [index, key] of ['a', 'b', 'c', 'é', 'é😀'].entries())
     await store.set(key, index)
   assert.deepEqual(await Array.fromAsync(store.keys({ gt: 'a', lte: 'c' })), [
@@ -179,9 +191,8 @@ test('treats negative zero as zero in keys and range bounds', async (t) => {
 
 test('forEach awaits callbacks sequentially and preserves callback arguments', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
   const store = new FlashStore<string, number>(dir)
-  t.after(() => store.close())
+  cleanupStore(t, store, dir)
   await store.set('a', 1)
   await store.set('b', 2)
 
@@ -216,9 +227,8 @@ test('forEach awaits callbacks sequentially and preserves callback arguments', a
 
 test('forEach stops and propagates callback failures', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
   const store = new FlashStore<string, number>(dir)
-  t.after(() => store.close())
+  cleanupStore(t, store, dir)
   await store.set('a', 1)
   await store.set('b', 2)
   const visited: string[] = []
@@ -271,9 +281,8 @@ test('concurrent close calls share the same close operation', async (t) => {
 
 test('diagnostic and tracing channels work without exposing stored data', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
   const store = new FlashStore<string, string>(dir)
-  t.after(() => store.close())
+  cleanupStore(t, store, dir)
   const messages: unknown[] = []
   const onMessage = (message: unknown) => messages.push(message)
   const event = channel('flash-store.operation')
