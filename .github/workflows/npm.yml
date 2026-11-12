@@ -64,6 +64,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:pack
+      - run: node --test scripts/publish.integration.test.ts
 
   publish:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/v'))
@@ -93,7 +94,19 @@ jobs:
         shell: bash
         run: |
           if [[ "$GITHUB_REF" =~ ^refs/heads/(main|v[0-9]+\.[0-9]+.*)$ ]]; then
+            NAME="$(node -p "require('./package.json').name")"
             VERSION="$(node -p "require('./package.json').version")"
+            VERSIONS="$(npm view "$NAME" versions --json)"
+            PUBLISHED="$(node -e '
+              const versions = JSON.parse(process.argv[1])
+              const list = Array.isArray(versions) ? versions : [versions]
+              if (!list.every(version => typeof version === "string")) throw new Error("Invalid npm versions response")
+              console.log(list.includes(process.argv[2]))
+            ' "$VERSIONS" "$VERSION")"
+            if [[ "$PUBLISHED" == true ]]; then
+              echo "$NAME@$VERSION is already published; skipping."
+              exit 0
+            fi
             if [[ "${VERSION%%+*}" == *-* ]]; then TAG=next; else TAG=latest; fi
             npm publish --tag "$TAG"
           fi
