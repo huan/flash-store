@@ -26,8 +26,8 @@ export function encodeKey(key: StoreKey): Uint8Array<ArrayBuffer> {
   return keyBuffer.slice(0, checkedSize(key))
 }
 
-/** Rejects oversized native writes before LMDB can start a write batch. */
-export function checkNativeWriteKey(key: StoreKey): void {
+/** Rejects oversized keys before either backend or the write-back cache mutates. */
+export function validateKeySize(key: StoreKey): void {
   // Each UTF-16 code unit needs at most three bytes, plus a possible lead byte.
   if (typeof key === 'string' && key.length * 3 + 1 > maxKeyBytes)
     checkedSize(key)

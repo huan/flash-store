@@ -3,6 +3,7 @@
  * and browser entries. Its storage backend supplies transactions and snapshots.
  */
 import { log, VERSION } from './config.ts'
+import { validateKeySize } from './key-encoding.ts'
 import type { ScanRange, StoreBackend } from './store-backend.ts'
 
 /** Numbers precede strings in storage key order. */
@@ -30,6 +31,7 @@ export function validateKey(key: StoreKey): void {
       'Keys must be finite numbers or strings without null characters',
     )
   }
+  validateKeySize(key)
 }
 
 /** Serialize a value once, rejecting values that JSON cannot represent. */
@@ -42,7 +44,7 @@ export function serialize(value: unknown): string {
 
 /**
  * Writes pre-serialized JSON for FlashStoreSync, which serializes at call time.
- * Internal: mod.ts does not export it, and package exports expose only mod.ts.
+ * Used by the shared synchronous cache, outside the public package entries.
  */
 export let writeSerialized: <K extends StoreKey>(
   store: FlashStoreCore<K, unknown>,
@@ -90,6 +92,7 @@ export class FlashStoreCore<K extends StoreKey, V> {
   readonly workdir: string
   private readonly backend: StoreBackend
   private closePromise?: Promise<void>
+  private destroyPromise?: Promise<void>
 
   static {
     writeSerialized = (store, key, serialized) => store.write(key, serialized)
@@ -225,10 +228,21 @@ export class FlashStoreCore<K extends StoreKey, V> {
     await this.closePromise
   }
 
-  /** Closes this handle and removes its backing storage. */
+  /** Closes this handle and removes its backing storage once. Failed removals can be retried. */
   async destroy(): Promise<void> {
     log.verbose('FlashStore', 'destroy()')
-    await this.close()
-    await this.backend.destroy()
+    this.destroyPromise ??= this.removeStorage()
+    await this.destroyPromise
+  }
+
+  /** Releases the handle before removal and leaves failures available for retry. */
+  private async removeStorage(): Promise<void> {
+    try {
+      await this.close()
+      await this.backend.destroy()
+    } catch (error) {
+      this.destroyPromise = undefined
+      throw error
+    }
   }
 }

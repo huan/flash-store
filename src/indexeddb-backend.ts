@@ -9,6 +9,7 @@ import { encodeKey, encodePrefixEnd } from './key-encoding.ts'
 import type { ScanRange, StoreBackend, StoredEntry } from './store-backend.ts'
 
 const records = 'records'
+
 /** Decodes the keys written by this backend, including IndexedDB's ArrayBuffer output. */
 function decode(key: IDBValidKey): StoreKey {
   const bytes = new Uint8Array(key as ArrayBuffer)
@@ -42,6 +43,7 @@ export class IndexedDbBackend implements StoreBackend {
   private readonly connection: Promise<IDBDatabase>
   private readonly pending = new Set<Promise<unknown>>()
   private closing = false
+  private deletionRequestedElsewhere = false
 
   /** Starts opening the database. Operations surface any open failure. */
   constructor(name: string) {
@@ -52,8 +54,9 @@ export class IndexedDbBackend implements StoreBackend {
       request.onerror = () => reject(request.error)
       request.onsuccess = () => {
         const db = request.result
-        db.onversionchange = () => {
-          // Cooperate with deletions and upgrades from another connection.
+        db.onversionchange = (event) => {
+          // A peer deletion can be followed by a fresh database with the same name.
+          this.deletionRequestedElsewhere = event.newVersion === null
           this.closing = true
           db.close()
         }
@@ -186,7 +189,9 @@ export class IndexedDbBackend implements StoreBackend {
   }
 
   /** Deletes this database after the facade has closed this connection. */
-  destroy(): Promise<void> {
+  async destroy(): Promise<void> {
+    if (this.deletionRequestedElsewhere)
+      throw new Error('Store was closed for an external database deletion')
     return new Promise((resolve, reject) => {
       const request = indexedDB.deleteDatabase(this.name)
       request.onsuccess = () => resolve()

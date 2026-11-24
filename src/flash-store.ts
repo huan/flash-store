@@ -8,7 +8,7 @@ import { homedir, tmpdir } from 'node:os'
 import { parse, resolve } from 'node:path'
 import { IF_EXISTS, open, type RootDatabase } from 'lmdb'
 import { FlashStoreCore, type StoreKey } from './flash-store-core.ts'
-import { checkNativeWriteKey, encodePrefixEnd } from './key-encoding.ts'
+import { encodePrefixEnd } from './key-encoding.ts'
 import type { ScanRange, StoreBackend, StoredEntry } from './store-backend.ts'
 
 export type { IteratorOptions, StoreKey } from './flash-store-core.ts'
@@ -28,7 +28,6 @@ class LmdbBackend implements StoreBackend {
 
   /** Enqueues a write of serialized JSON. */
   put(key: StoreKey, json: string): Promise<unknown> {
-    checkNativeWriteKey(key)
     return this.db.put(key, json)
   }
 

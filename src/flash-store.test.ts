@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import DefaultStore, { FlashStore, FlashStoreSync, VERSION } from '#test-store'
+import type { StoreBackend } from './store-backend.ts'
 import { testStore } from './test-fixture.ts'
 
 test('public entry point exports the package API', (t) => {
@@ -276,6 +277,8 @@ test('enforces the encoded key boundary', async (t) => {
   await assert.rejects(store.set('😀'.repeat(800), 2), /too large/i)
   await store.set('after-invalid', 2)
   assert.equal(await store.get('after-invalid'), 2)
+  await assert.rejects(store.delete(`${key}x`), /too large/i)
+  await store.close()
 })
 
 test('iteration keeps a snapshot while caller code updates the store', async (t) => {
@@ -307,4 +310,30 @@ test('close drains writes and destroy removes only the selected store', async (t
   await reopened.destroy()
   assert.equal(await open().size, 0)
   assert.equal(await other.get('key'), 2)
+})
+
+test('destroy on the same handle does not delete a replacement store', async (t) => {
+  const { open } = testStore(t)
+  const store = open<string, number>()
+  await store.set('original', 1)
+  await Promise.all([store.destroy(), store.destroy()])
+  const replacement = open<string, number>()
+  await replacement.set('replacement', 2)
+  await store.destroy()
+  assert.equal(await replacement.get('replacement'), 2)
+})
+
+test('a failed removal can be retried on the same handle', async (t) => {
+  const { open } = testStore(t)
+  const store = open<string, number>()
+  await store.set('key', 1)
+  const backend: StoreBackend = Reflect.get(store, 'backend')
+  const destroy = backend.destroy.bind(backend)
+  backend.destroy = async () => {
+    backend.destroy = destroy
+    throw new Error('Removal failed')
+  }
+  await assert.rejects(store.destroy(), /Removal failed/)
+  await store.destroy()
+  assert.equal(await open().size, 0)
 })

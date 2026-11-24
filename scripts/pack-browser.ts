@@ -1,12 +1,14 @@
 /**
  * Verifies the published browser exports in Chromium using an installed npm
- * tarball and a real IndexedDB origin. It supplies no Node globals or shims.
+ * tarball and a real IndexedDB origin. It exercises bundled exports and native
+ * ESM requests without Node globals or shims.
  */
 import assert from 'node:assert/strict'
+import { join } from 'node:path'
 import { build } from 'esbuild'
 import { chromium } from 'playwright'
 
-/** Bundles both public browser entry points and verifies persistence across a page reload. */
+/** Checks both browser exports and reopens bundled data from unbundled ESM after a reload. */
 export async function smokeBrowser(directory: string): Promise<void> {
   const result = await build({
     absWorkingDir: directory,
@@ -29,14 +31,39 @@ export async function smokeBrowser(directory: string): Promise<void> {
     const context = await browser.newContext()
     const origin = 'https://flash-store.test/'
     const bundleUrl = new URL('store.js', origin).href
-    await context.route(`${origin}**`, (route) =>
-      route.request().url() === bundleUrl
-        ? route.fulfill({ contentType: 'text/javascript', body: bundle.text })
-        : route.fulfill({
-            contentType: 'text/html',
-            body: '<!doctype html><title>Flash Store smoke test</title>',
-          }),
-    )
+    const html = `<!doctype html><title>Flash Store smoke test</title>
+      <script type="importmap">
+        {
+          "imports": {
+            "flash-store/browser": "/node_modules/flash-store/dist/src/browser.js",
+            "brolog": "/node_modules/brolog/dist/esm/src/mod.js",
+            "ordered-binary": "/node_modules/ordered-binary/index.js"
+          }
+        }
+      </script>`
+    await context.route(`${origin}**`, (route) => {
+      const url = route.request().url()
+      if (url === bundleUrl)
+        return route.fulfill({
+          contentType: 'text/javascript',
+          body: bundle.text,
+        })
+      if (url === origin)
+        return route.fulfill({ contentType: 'text/html', body: html })
+      const { pathname } = new URL(url)
+      if (
+        !/^\/node_modules\/(?:flash-store\/dist\/|brolog\/dist\/esm\/|ordered-binary\/index\.js$)/.test(
+          pathname,
+        )
+      )
+        return route.abort()
+      return route.fulfill({
+        path: join(directory, pathname),
+        contentType: pathname.endsWith('.json')
+          ? 'application/json'
+          : 'text/javascript',
+      })
+    })
     const page = await context.newPage()
     await page.goto(origin)
     const name = 'packed-flash-store'
@@ -63,17 +90,17 @@ export async function smokeBrowser(directory: string): Promise<void> {
     )
     assert.match(version, /^2\./)
     await page.reload()
-    const read = await page.evaluate(
-      async ({ bundleUrl, name }) => {
-        const api: typeof import('../src/browser.ts') = await import(bundleUrl)
-        const reopened = new api.FlashStoreSync(name)
-        await reopened.ready()
-        const value = reopened.get('key')
-        await reopened.close()
-        return value
-      },
-      { bundleUrl, name },
-    )
+    const read = await page.evaluate(async (name) => {
+      const specifier = 'flash-store/browser'
+      const api: typeof import('../src/browser.ts') = await import(specifier)
+      if (api.default !== api.FlashStore || !/^2\./.test(api.VERSION))
+        throw new Error('Unbundled ESM exports or package metadata are invalid')
+      const reopened = new api.FlashStoreSync(name)
+      await reopened.ready()
+      const value = reopened.get('key')
+      await reopened.close()
+      return value
+    }, name)
     assert.deepEqual(read, { value: 42 })
 
     const peer = await context.newPage()
@@ -120,24 +147,43 @@ export async function smokeBrowser(directory: string): Promise<void> {
         await store.destroy()
         const fresh = new api.FlashStore(name)
         const size = await fresh.size
-        await fresh.destroy()
+        await fresh.set('replacement', 99)
+        await fresh.close()
         return size === 0
       },
       { bundleUrl, name },
     )
     assert.equal(destroyed, true)
 
-    const peerWasClosed = await peer.evaluate(async () => {
+    const stalePeer = await peer.evaluate(async () => {
       const store: import('../src/browser.ts').FlashStore | undefined =
         Reflect.get(globalThis, 'peerStore')
       if (!store) throw new Error('Missing peer store')
-      return store.get('key').then(
+      const closed = await store.get('key').then(
         () => false,
         (error: unknown) =>
           error instanceof Error && /closed/.test(error.message),
       )
+      const deletionRejected = await store.destroy().then(
+        () => false,
+        (error: unknown) =>
+          error instanceof Error &&
+          /external database deletion/.test(error.message),
+      )
+      return { closed, deletionRejected }
     })
-    assert.equal(peerWasClosed, true)
+    assert.deepEqual(stalePeer, { closed: true, deletionRejected: true })
+    const replacementValue = await page.evaluate(
+      async ({ bundleUrl, name }) => {
+        const api: typeof import('../src/browser.ts') = await import(bundleUrl)
+        const replacement = new api.FlashStore(name)
+        const value = await replacement.get('replacement')
+        await replacement.destroy()
+        return value
+      },
+      { bundleUrl, name },
+    )
+    assert.equal(replacementValue, 99)
   } finally {
     await browser.close()
   }

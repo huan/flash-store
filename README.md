@@ -59,16 +59,33 @@ can check protected directories.
 
 A bundler that uses the `browser` export condition resolves
 `import { FlashStore } from 'flash-store'` to IndexedDB. Use
-`flash-store/browser` to select that entry explicitly.
+`flash-store/browser` to select that entry explicitly. For a page that loads
+modules directly, serve the installed package files and use an HTML import map
+to resolve the entry and its two bare imports:
 
-```ts
+```html
+<script type="importmap">
+{
+  "imports": {
+    "flash-store/browser": "/node_modules/flash-store/dist/src/browser.js",
+    "brolog": "/node_modules/brolog/dist/esm/src/mod.js",
+    "ordered-binary": "/node_modules/ordered-binary/index.js"
+  }
+}
+</script>
+```
+
+Serve the referenced JavaScript and the package's `dist/package.json` with
+their JavaScript and JSON content types, respectively.
+
+```js
 import { FlashStore, FlashStoreSync } from 'flash-store/browser'
 
 const store = new FlashStore('app-cache')
 await store.set('theme', 'dark')
 await store.close()
 
-const cache = new FlashStoreSync<string, string>('app-cache')
+const cache = new FlashStoreSync('app-cache')
 await cache.ready()
 console.log(cache.get('theme'))
 await cache.close()
@@ -77,8 +94,9 @@ await cache.close()
 The constructor takes a database name scoped to the current origin. Its
 operations wait for IndexedDB to open. `destroy()` deletes that named database
 and waits for other connections to release it. Flash Store connections close
-when Chrome requests a version change or deletion. A synchronous cache sees
-its own writes and the snapshot restored by `ready()`. If another tab changes
+when Chrome requests a version change or deletion. A handle closed by a peer's
+deletion request rejects its own later `destroy()` so it cannot remove a
+replacement database. A synchronous cache sees its own writes and the snapshot restored by `ready()`. If another tab changes
 the database, reopen the cache to read the updated state. Browser data is
 subject to site storage quotas and eviction.
 
@@ -91,6 +109,9 @@ and `size`, plus async iteration through `entries`, `keys`, and `values`.
 Keys are finite numbers or strings without null characters; values use JSON
 serialization. Numeric keys sort naturally before strings. Both backends enforce the default LMDB limit of 1978 encoded bytes per key.
 See the [LMDB documentation](https://github.com/kriszyp/lmdb-js#keys).
+For arbitrary string identifiers, encode embedded control characters and
+unpaired UTF-16 surrogates before storing them as keys. The inherited
+ordered-binary codec can change those characters when decoding long keys.
 
 Values are serialized with `JSON.stringify` and read back with `JSON.parse`.
 This is not a lossless round trip for every JavaScript value: for example,
@@ -114,8 +135,9 @@ a key existed.
 
 `close()` waits for outstanding writes. `destroy()` closes and **deletes the
 entire database directory** under Node.js and Deno, so use a dedicated
-directory. In Chrome it deletes the named IndexedDB database. Both operations
-reject on failure.
+directory. In Chrome it deletes the named IndexedDB database. After a
+successful `destroy()`, another call on the same handle has no effect. Both
+operations reject on failure.
 
 ### `FlashStoreSync`
 
@@ -156,7 +178,8 @@ LMDB and native diagnostics. `npm run coverage:node` and
 `npm run coverage:deno` enforce independent line, branch, and function floors
 for the native adapter and shared sources. CI uploads each runtime's LCOV
 and HTML reports. `npm run test:pack` verifies the installed package in Node,
-Deno, and Chromium and checks consumer type resolution.
+Deno, and Chromium and checks consumer type resolution. The Chromium smoke
+test covers both bundled and direct ESM loading.
 
 ### Benchmark
 
