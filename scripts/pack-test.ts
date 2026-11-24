@@ -1,11 +1,13 @@
 /**
- * Rehearses npm publication in an isolated directory and verifies installed ESM and types.
+ * Rehearses npm publication in an isolated directory and verifies the installed
+ * package in Node, Deno, and Chromium, including its TypeScript declarations.
  */
 import { execFile } from 'node:child_process'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
+import { smokeBrowser } from './pack-browser.ts'
 
 const exec = promisify(execFile)
 const directory = await mkdtemp(join(tmpdir(), 'flash-store-pack-'))
@@ -20,9 +22,17 @@ try {
     '--pack-destination',
     directory,
   ])
-  const result: { filename: string }[] = JSON.parse(stdout)
-  const filename = result[0]?.filename
-  if (!filename) throw new Error('npm pack did not return a tarball')
+  // npm 11 reports an array, while npm 12 reports an object keyed by package name.
+  const result:
+    | Record<string, { filename?: string }>
+    | { filename?: string }[] = JSON.parse(stdout)
+  const [{ filename } = {}] = Object.values(result)
+  if (
+    !filename ||
+    basename(filename) !== filename ||
+    !filename.endsWith('.tgz')
+  )
+    throw new Error('npm pack did not return a tarball')
   await writeFile(
     join(directory, 'package.json'),
     '{"private":true,"type":"module"}',
@@ -58,6 +68,21 @@ try {
   await exec(process.execPath, [join(directory, 'smoke.mjs')], {
     cwd: directory,
   })
+  await exec(
+    'deno',
+    [
+      'run',
+      '--node-modules-dir=manual',
+      '--allow-read',
+      '--allow-write',
+      '--allow-env',
+      '--allow-ffi=./node_modules',
+      '--allow-sys=homedir',
+      'smoke.mjs',
+    ],
+    { cwd: directory },
+  )
+  await smokeBrowser(directory)
   await writeFile(
     join(directory, 'consumer.mts'),
     `
@@ -90,7 +115,39 @@ try {
     ],
     { cwd: directory },
   )
-  console.log('Installed ESM package and declarations verified')
+  await writeFile(
+    join(directory, 'browser-consumer.mts'),
+    `
+    import FlashStore from 'flash-store'
+    import { FlashStore as ExplicitBrowserStore } from 'flash-store/browser'
+    const store: ExplicitBrowserStore<string, number> = new FlashStore('smoke')
+    await store.set('a', 1)
+    await store.destroy()
+  `,
+  )
+  await exec(
+    process.execPath,
+    [
+      resolve('node_modules/typescript/bin/tsc'),
+      '--noEmit',
+      '--skipLibCheck',
+      '--module',
+      'ESNext',
+      '--moduleResolution',
+      'Bundler',
+      '--customConditions',
+      'browser',
+      '--target',
+      'ES2025',
+      '--lib',
+      'ESNext,DOM',
+      join(directory, 'browser-consumer.mts'),
+    ],
+    { cwd: directory },
+  )
+  console.log(
+    'Installed Node, Deno, and Chromium package and declarations verified',
+  )
 } finally {
   await rm(directory, { recursive: true, force: true })
 }

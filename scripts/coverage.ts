@@ -1,9 +1,10 @@
 /**
  * Collects native runtime coverage, checks independent baselines, and emits local reports.
- * Node coverage is LCOV; Deno provides both LCOV and HTML directly.
+ * Measures the shared API and native adapter. Chromium verifies its own adapter.
+ * Node emits LCOV, and Deno supplies LCOV and HTML directly.
  */
 import { execFile } from 'node:child_process'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { promisify } from 'node:util'
 
@@ -11,15 +12,22 @@ const exec = promisify(execFile)
 const runtime = process.argv[2]
 if (runtime !== 'node' && runtime !== 'deno')
   throw new Error('Expected node or deno')
-const baselines: Record<
-  'node' | 'deno',
-  Record<'lines' | 'branches' | 'functions', number>
-> = JSON.parse(
+const baseline: Record<'lines' | 'branches' | 'functions', number> = JSON.parse(
   await readFile(
-    new URL('../coverage-baselines.json', import.meta.url),
+    new URL(
+      `../.github/coverage-baselines/${runtime}.flash-store.json`,
+      import.meta.url,
+    ),
     'utf8',
   ),
 )
+const nativeIntegration = 'tests/native.integration.test.ts'
+const browserAndTestSources = ['browser', 'indexeddb-backend', 'test-fixture']
+const denoScope = [
+  '--include=/src/[^/]+\\.ts$',
+  '--exclude=\\.test\\.ts$',
+  ...browserAndTestSources.map((name) => `--exclude=/src/${name}\\.ts$`),
+]
 const directory = resolve('coverage', runtime)
 await mkdir(directory, { recursive: true })
 let lcov: string
@@ -31,9 +39,13 @@ if (runtime === 'node') {
       '--experimental-test-coverage',
       '--test-coverage-include=src/*.ts',
       '--test-coverage-exclude=src/*.test.ts',
+      ...browserAndTestSources.map(
+        (name) => `--test-coverage-exclude=src/${name}.ts`,
+      ),
       '--test-coverage-include-all',
       '--test-reporter=lcov',
       'src/*.test.ts',
+      nativeIntegration,
     ],
     { maxBuffer: 10 * 1024 * 1024 },
   )
@@ -82,16 +94,20 @@ if (runtime === 'node') {
       `--coverage=${raw}`,
       '--clean',
       'src/',
+      nativeIntegration,
     ],
     { maxBuffer: 10 * 1024 * 1024 },
   )
   process.stdout.write(result.stdout)
-  const report = await exec('deno', ['coverage', '--lcov', raw], {
+  const report = await exec('deno', ['coverage', '--lcov', ...denoScope, raw], {
     maxBuffer: 10 * 1024 * 1024,
   })
   lcov = report.stdout
   await writeFile(resolve(directory, 'lcov.info'), lcov)
-  await exec('deno', ['coverage', '--html', raw])
+  const html = resolve(raw, 'html')
+  // Deno replaces the index while HTML pages from old paths can remain on disk.
+  await rm(html, { recursive: true, force: true })
+  await exec('deno', ['coverage', '--html', ...denoScope, raw])
 }
 
 for (const [metric, found, hit] of [
@@ -107,7 +123,7 @@ for (const [metric, found, hit] of [
   const total = sum(found)
   if (!total) throw new Error(`${runtime} coverage has no ${metric} data`)
   const percentage = (100 * sum(hit)) / total
-  const minimum = baselines[runtime][metric]
+  const minimum = baseline[metric]
   if (!Number.isFinite(minimum) || minimum < 0 || minimum > 100)
     throw new Error(`Invalid ${runtime} ${metric} coverage baseline`)
   console.log(

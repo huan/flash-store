@@ -1,40 +1,25 @@
 /**
- * Verifies the persistent API, range semantics, diagnostics, and storage safety.
- * The same suite is executed by Node and Deno.
+ * Runs the public async Map contract unchanged against each runtime's store.
  */
+
 import assert from 'node:assert/strict'
-import { channel, tracingChannel } from 'node:diagnostics_channel'
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { type TestContext, test } from 'node:test'
-import { open } from 'lmdb'
-import DefaultStore, { FlashStore, VERSION } from './mod.ts'
+import { test } from 'node:test'
+import DefaultStore, { FlashStore, FlashStoreSync, VERSION } from '#test-store'
+import { testStore } from './test-fixture.ts'
 
-/** Closes the LMDB environment before removing files that Windows keeps locked. */
-function cleanupStore<K extends string | number, V>(
-  t: TestContext,
-  store: FlashStore<K, V>,
-  dir: string,
-): void {
-  t.after(async () => {
-    try {
-      await store.close()
-    } finally {
-      await rm(dir, { recursive: true, force: true })
-    }
-  })
-}
-
-test('public entry point exports the package API', () => {
+test('public entry point exports the package API', (t) => {
   assert.equal(DefaultStore, FlashStore)
   assert.match(VERSION, /^2\./)
+  assert.equal(FlashStore.VERSION, VERSION)
+  assert.equal(FlashStoreSync.VERSION, VERSION)
+  const { open, openSync } = testStore(t)
+  assert.equal(open().version(), VERSION)
+  assert.equal(openSync().version(), VERSION)
 })
 
 test('persists JSON values, reports falsey keys, and reopens', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
-  const store = new FlashStore<string, unknown>(dir)
+  const { open } = testStore(t)
+  const store = open<string, unknown>()
   await store.set('false', false)
   await store.set('zero', 0)
   await store.set('null', null)
@@ -47,7 +32,7 @@ test('persists JSON values, reports falsey keys, and reopens', async (t) => {
   assert.equal(await store.delete('zero'), true)
   assert.equal(await store.size, 3)
   await store.close()
-  const reopened = new FlashStore<string, unknown>(dir)
+  const reopened = open<string, unknown>()
   assert.deepEqual(await reopened.get('object'), { nested: [1, 'x'] })
   assert.equal(await reopened.get('false'), false)
   await reopened.clear()
@@ -56,9 +41,8 @@ test('persists JSON values, reports falsey keys, and reopens', async (t) => {
 })
 
 test('delete reports existence per call, in order with queued writes', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  const store = new FlashStore<string, number>(dir)
-  cleanupStore(t, store, dir)
+  const { open } = testStore(t)
+  const store = open<string, number>()
   await store.set('key', 1)
   assert.deepEqual(
     await Promise.all([
@@ -83,19 +67,13 @@ test('delete reports existence per call, in order with queued writes', async (t)
 })
 
 test('serializes each value once and reads the resulting JSON', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  const raw = open<unknown, string>({ path: dir, encoding: 'json' })
-  await raw.put('existing', { text: 'existing' })
-  await raw.close()
-  const store = new FlashStore<string, unknown>(dir)
-  cleanupStore(t, store, dir)
-  assert.deepEqual(await store.get('existing'), { text: 'existing' })
+  const { open } = testStore(t)
+  const store = open<string, unknown>()
   let calls = 0
   await store.set('value', { toJSON: () => ({ calls: ++calls, text: 'é😀' }) })
   assert.equal(calls, 1)
   assert.deepEqual(await store.get('value'), { calls: 1, text: 'é😀' })
   assert.deepEqual(await Array.fromAsync(store.values()), [
-    { text: 'existing' },
     { calls: 1, text: 'é😀' },
   ])
   await assert.rejects(
@@ -103,18 +81,13 @@ test('serializes each value once and reads the resulting JSON', async (t) => {
     /JSON serializable/,
   )
   await store.close()
-  const reopened = open<unknown, string>({ path: dir, encoding: 'json' })
-  try {
-    assert.deepEqual(reopened.get('value'), { calls: 1, text: 'é😀' })
-  } finally {
-    await reopened.close()
-  }
+  const reopened = open<string, unknown>()
+  assert.deepEqual(await reopened.get('value'), { calls: 1, text: 'é😀' })
 })
 
 test('range boundaries, reverse, limits, and Unicode prefixes', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  const store = new FlashStore<string, number>(dir)
-  cleanupStore(t, store, dir)
+  const { open } = testStore(t)
+  const store = open<string, number>()
   for (const [index, key] of ['a', 'b', 'c', 'é', 'é😀'].entries())
     await store.set(key, index)
   assert.deepEqual(await Array.fromAsync(store.keys({ gt: 'a', lte: 'c' })), [
@@ -145,84 +118,9 @@ test('range boundaries, reverse, limits, and Unicode prefixes', async (t) => {
   await assert.rejects(() => store.set('invalid\0key', 1), /Keys/)
 })
 
-test('prefix iteration reads only its contiguous key interval', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  const store = new FlashStore<string | number, number>(dir)
-  cleanupStore(t, store, dir)
-  const keys = [
-    1,
-    'a',
-    'ab',
-    'ab\u{10ffff}',
-    'ab\u{10ffff}z',
-    'ac',
-    'b',
-    'é',
-    'é😀',
-    'ê',
-  ]
-  for (const [index, key] of keys.entries()) await store.set(key, index)
-  // Count cursor reads to verify that a prefix scan does not visit other entries.
-  const db: { getRange: (options: unknown) => Iterable<unknown> } = Reflect.get(
-    store,
-    'db',
-  )
-  const getRange = db.getRange.bind(db)
-  let reads = 0
-  db.getRange = (options) => ({
-    *[Symbol.iterator]() {
-      for (const entry of getRange(options)) {
-        reads++
-        yield entry
-      }
-    },
-  })
-  const scan = async (options: Parameters<typeof store.keys>[0]) => {
-    reads = 0
-    return { keys: await Array.fromAsync(store.keys(options)), reads }
-  }
-  assert.deepEqual(await scan({ prefix: 'ab' }), {
-    keys: ['ab', 'ab\u{10ffff}', 'ab\u{10ffff}z'],
-    reads: 4,
-  })
-  assert.deepEqual(await scan({ prefix: 'ab', reverse: true }), {
-    keys: ['ab\u{10ffff}z', 'ab\u{10ffff}', 'ab'],
-    reads: 4,
-  })
-  assert.deepEqual(await scan({ prefix: 'ab', reverse: true, limit: 1 }), {
-    keys: ['ab\u{10ffff}z'],
-    reads: 1,
-  })
-  assert.deepEqual(await scan({ prefix: 'é' }), {
-    keys: ['é', 'é😀'],
-    reads: 3,
-  })
-  assert.deepEqual(await scan({ prefix: 'aa' }), { keys: [], reads: 1 })
-  assert.deepEqual(await scan({ prefix: 'aa', reverse: true }), {
-    keys: [],
-    reads: 1,
-  })
-  // 'é' sorts after 'z', so the scan reads it once and stops.
-  assert.deepEqual(await scan({ prefix: 'z' }), { keys: [], reads: 1 })
-  assert.deepEqual(await scan({ prefix: '\u{10ffff}' }), {
-    keys: [],
-    reads: 0,
-  })
-  assert.deepEqual(await scan({ prefix: '\u{10ffff}', reverse: true }), {
-    keys: [],
-    reads: 1,
-  })
-  assert.deepEqual((await scan({ prefix: '', reverse: true, limit: 2 })).keys, [
-    'ê',
-    'é😀',
-  ])
-  assert.deepEqual((await scan({ prefix: '' })).keys, keys.slice(1))
-})
-
 test('numeric keys sort naturally and early iteration can close', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
-  const store = new FlashStore<number, string>(dir)
+  const { open } = testStore(t)
+  const store = open<number, string>()
   await store.set(10, 'ten')
   await store.set(-1, 'negative')
   await store.set(2, 'two')
@@ -236,9 +134,8 @@ test('numeric keys sort naturally and early iteration can close', async (t) => {
 })
 
 test('treats negative zero as zero in keys and range bounds', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
-  const store = new FlashStore<number, string>(dir)
+  const { open } = testStore(t)
+  const store = open<number, string>()
   await store.set(-1, 'negative')
   await store.set(-0, 'zero')
   await store.set(1, 'positive')
@@ -256,7 +153,7 @@ test('treats negative zero as zero in keys and range bounds', async (t) => {
     [0, -1],
   )
   await store.close()
-  const reopened = new FlashStore<number, string>(dir)
+  const reopened = open<number, string>()
   assert.equal(await reopened.get(-0), 'updated')
   assert.equal(await reopened.delete(-0), true)
   assert.equal(await reopened.has(0), false)
@@ -264,9 +161,8 @@ test('treats negative zero as zero in keys and range bounds', async (t) => {
 })
 
 test('forEach awaits callbacks sequentially and preserves callback arguments', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  const store = new FlashStore<string, number>(dir)
-  cleanupStore(t, store, dir)
+  const { open } = testStore(t)
+  const store = open<string, number>()
   await store.set('a', 1)
   await store.set('b', 2)
 
@@ -300,9 +196,8 @@ test('forEach awaits callbacks sequentially and preserves callback arguments', a
 })
 
 test('forEach stops and propagates callback failures', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  const store = new FlashStore<string, number>(dir)
-  cleanupStore(t, store, dir)
+  const { open } = testStore(t)
+  const store = open<string, number>()
   await store.set('a', 1)
   await store.set('b', 2)
   const visited: string[] = []
@@ -328,63 +223,88 @@ test('forEach stops and propagates callback failures', async (t) => {
   assert.deepEqual(await Array.fromAsync(store.keys()), ['a', 'b'])
 })
 
-test('destroy removes its database directory', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-guard-'))
-  await mkdir(join(dir, 'child'))
-  const store = new FlashStore(join(dir, 'child'))
-  await store.destroy()
-  await rm(dir, { recursive: true })
-})
-
-test('destroy refuses protected directories before closing or deleting anything', async () => {
-  const action: Promise<void> = Reflect.apply(
-    FlashStore.prototype.destroy,
-    { workdir: tmpdir() },
-    [],
-  )
-  await assert.rejects(action, /protected directory/)
-})
-
 test('concurrent close calls share the same close operation', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
-  const store = new FlashStore(dir)
+  const { open } = testStore(t)
+  const store = open()
   await Promise.all([store.close(), store.close()])
   await store.destroy()
 })
 
-test('diagnostic and tracing channels work without exposing stored data', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
-  const store = new FlashStore<string, string>(dir)
-  cleanupStore(t, store, dir)
-  const messages: unknown[] = []
-  const onMessage = (message: unknown) => messages.push(message)
-  const event = channel('flash-store.operation')
-  event.subscribe(onMessage)
+test('mixed keys use storage order for scans and Unicode boundaries', async (t) => {
+  const { open } = testStore(t)
+  const store = open<string | number, number>()
+  const keys = [
+    -2,
+    2,
+    10,
+    '',
+    '\u0001',
+    '2',
+    '\uE000',
+    '\u{10000}',
+    '\u{10000}x',
+  ]
+  for (const key of keys.toReversed()) await store.set(key, 1)
+  assert.deepEqual(await Array.fromAsync(store.keys()), keys)
+  assert.deepEqual(
+    await Array.fromAsync(store.keys({ prefix: '', reverse: true, limit: 2 })),
+    keys.slice(-2).toReversed(),
+  )
+  assert.deepEqual(
+    await Array.fromAsync(store.keys({ prefix: '\u{10000}', reverse: true })),
+    keys.slice(-2).toReversed(),
+  )
+  assert.deepEqual(await Array.fromAsync(store.keys({ gt: 2, lte: 2 })), [])
+  assert.deepEqual(
+    await Array.fromAsync(store.keys({ gte: 10, lt: 2, reverse: true })),
+    [],
+  )
+})
+
+test('enforces the encoded key boundary', async (t) => {
+  const { open } = testStore(t)
+  const store = open<string, number>()
+  const key = `${'x'.repeat(1977)}\u007f`
+  await store.set(key, 1)
+  assert.equal(await store.get(key), 1)
+  assert.deepEqual(await Array.fromAsync(store.keys({ prefix: key })), [key])
+  assert.deepEqual(
+    await Array.fromAsync(store.keys({ prefix: key, reverse: true })),
+    [key],
+  )
+  await assert.rejects(store.set(`${key}x`, 2), /too large/i)
+  await assert.rejects(store.set('😀'.repeat(800), 2), /too large/i)
+  await store.set('after-invalid', 2)
+  assert.equal(await store.get('after-invalid'), 2)
+})
+
+test('iteration keeps a snapshot while caller code updates the store', async (t) => {
+  const { open } = testStore(t)
+  const store = open<string, number>()
+  await store.set('a', 1)
+  await store.set('b', 2)
+  const entries = store.entries()
   try {
-    await store.set('secret-key', 'secret-value')
-    await store.delete('secret-key')
-    await store.clear()
+    assert.deepEqual((await entries.next()).value, ['a', 1])
+    await store.delete('b')
+    await store.set('c', 3)
+    assert.deepEqual((await entries.next()).value, ['b', 2])
+    assert.equal((await entries.next()).done, true)
   } finally {
-    event.unsubscribe(onMessage)
+    await entries.return?.()
   }
-  assert.deepEqual(messages, [
-    { operation: 'set' },
-    { operation: 'delete' },
-    { operation: 'clear' },
-  ])
-  const trace = tracingChannel('flash-store.test')
-  const seen: string[] = []
-  const start = () => seen.push('start')
-  const end = () => seen.push('end')
-  trace.subscribe({ start, end })
-  try {
-    assert.equal(
-      trace.traceSync(() => 42),
-      42,
-    )
-  } finally {
-    trace.unsubscribe({ start, end })
-  }
-  assert.deepEqual(seen, ['start', 'end'])
+  assert.deepEqual(await Array.fromAsync(store.keys()), ['a', 'c'])
+})
+
+test('close drains writes and destroy removes only the selected store', async (t) => {
+  const { open } = testStore(t)
+  const other = testStore(t).open<string, number>()
+  const store = open<string, number>()
+  const write = store.set('key', 1)
+  await Promise.all([store.close(), write, other.set('key', 2)])
+  const reopened = open<string, number>()
+  assert.equal(await reopened.get('key'), 1)
+  await reopened.destroy()
+  assert.equal(await open().size, 0)
+  assert.equal(await other.get('key'), 2)
 })

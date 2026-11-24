@@ -1,29 +1,27 @@
 /**
- * Verifies the cache facade's initialization, ordered write-back, and error boundary.
+ * Runs the synchronous write-back cache contract against each runtime's store.
  */
-import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { test } from 'node:test'
-import { FlashStore } from './flash-store.ts'
-import { FlashStoreSync } from './flash-store-sync.ts'
 
-/** Make the backing LMDB database reject writes, simulating a storage failure. */
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import type { FlashStore, FlashStoreSync } from '#test-store'
+import type { StoreBackend } from './store-backend.ts'
+import { testStore } from './test-fixture.ts'
+
+/** Inject a rejected write at the shared storage boundary. */
 function failWrites(store: FlashStoreSync<string, unknown>): void {
   const backing: FlashStore<string, unknown> = Reflect.get(store, 'flashStore')
-  const db: { put: unknown } = Reflect.get(backing, 'db')
-  db.put = () => Promise.reject(new Error('write failed'))
+  const backend: StoreBackend = Reflect.get(backing, 'backend')
+  backend.put = () => Promise.reject(new Error('write failed'))
 }
 
 test('loads existing data without overwriting immediate mutations', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-sync-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
-  const initial = new FlashStore<string, number>(dir)
+  const { open, openSync } = testStore(t)
+  const initial = open<string, number>()
   await initial.set('a', 1)
   await initial.set('b', 2)
   await initial.close()
-  const store = new FlashStoreSync<string, number>(dir)
+  const store = openSync<string, number>()
   store.set('a', 3)
   store.delete('b')
   store.set('c', 4)
@@ -32,7 +30,7 @@ test('loads existing data without overwriting immediate mutations', async (t) =>
   assert.equal(store.has('b'), false)
   assert.equal(store.size, 2)
   await store.close()
-  const reopened = new FlashStore<string, number>(dir)
+  const reopened = open<string, number>()
   assert.deepEqual(await Array.fromAsync(reopened.entries()), [
     ['a', 3],
     ['c', 4],
@@ -41,12 +39,11 @@ test('loads existing data without overwriting immediate mutations', async (t) =>
 })
 
 test('clear during initialization and destroy wait for queued writes', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-sync-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
-  const initial = new FlashStore<string, number>(dir)
+  const { open, openSync } = testStore(t)
+  const initial = open<string, number>()
   await initial.set('old', 1)
   await initial.close()
-  const store = new FlashStoreSync<string, number>(dir)
+  const store = openSync<string, number>()
   store.clear()
   store.set('new', 2)
   await store.ready()
@@ -55,13 +52,12 @@ test('clear during initialization and destroy wait for queued writes', async (t)
 })
 
 test('persists and restores zero keys with Map equality', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-sync-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
-  const store = new FlashStoreSync<number, string>(dir)
+  const { open, openSync } = testStore(t)
+  const store = openSync<number, string>()
   store.set(-0, 'zero')
   await store.ready()
   await store.close()
-  const reopened = new FlashStoreSync<number, string>(dir)
+  const reopened = openSync<number, string>()
   await reopened.ready()
   assert.equal(reopened.get(0), 'zero')
   assert.equal(reopened.get(-0), 'zero')
@@ -69,15 +65,14 @@ test('persists and restores zero keys with Map equality', async (t) => {
   assert.equal(reopened.delete(-0), true)
   await reopened.ready()
   await reopened.close()
-  const backing = new FlashStore<number, string>(dir)
+  const backing = open<number, string>()
   assert.equal(await backing.has(0), false)
   await backing.destroy()
 })
 
 test('persists values as serialized when set and rejects invalid input synchronously', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-sync-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
-  const store = new FlashStoreSync<string | number, unknown>(dir)
+  const { open, openSync } = testStore(t)
+  const store = openSync<string | number, unknown>()
   const value = { count: 1 }
   store.set('first', value)
   value.count = 2
@@ -88,7 +83,7 @@ test('persists values as serialized when set and rejects invalid input synchrono
   assert.equal(store.has('bad'), false)
   await store.ready()
   await store.close()
-  const reopened = new FlashStore<string, unknown>(dir)
+  const reopened = open<string, unknown>()
   assert.deepEqual(await Array.fromAsync(reopened.entries()), [
     ['first', { count: 1 }],
     ['second', { count: 2 }],
@@ -97,9 +92,8 @@ test('persists values as serialized when set and rejects invalid input synchrono
 })
 
 test('write failures surface through ready and close', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-sync-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
-  const store = new FlashStoreSync<string, unknown>(dir)
+  const { open, openSync } = testStore(t)
+  const store = openSync<string, unknown>()
   await store.ready()
   failWrites(store)
   store.set('bad', 1)
@@ -110,16 +104,15 @@ test('write failures surface through ready and close', async (t) => {
   assert.throws(() => store.clear(), /write failed/)
   assert.equal(store.has('good'), false)
   await assert.rejects(store.close(), /write failed/)
-  const reopened = new FlashStore<string, unknown>(dir)
+  const reopened = open<string, unknown>()
   assert.equal(await reopened.get('bad'), undefined)
   assert.equal(await reopened.get('queued'), undefined)
   await reopened.destroy()
 })
 
 test('destroy closes the backing store after a write failure without deleting data', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-sync-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
-  const store = new FlashStoreSync<string, unknown>(dir)
+  const { open, openSync } = testStore(t)
+  const store = openSync<string, unknown>()
   store.set('saved', 1)
   await store.ready()
   failWrites(store)
@@ -127,15 +120,14 @@ test('destroy closes the backing store after a write failure without deleting da
   await assert.rejects(store.destroy(), /write failed/)
   const backing: FlashStore<string, unknown> = Reflect.get(store, 'flashStore')
   await assert.rejects(backing.get('saved'), /closed/i)
-  const reopened = new FlashStore<string, unknown>(dir)
+  const reopened = open<string, unknown>()
   assert.equal(await reopened.get('saved'), 1)
   await reopened.destroy()
 })
 
 test('close preserves both write and close failures', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-sync-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
-  const store = new FlashStoreSync<string, unknown>(dir)
+  const { openSync } = testStore(t)
+  const store = openSync<string, unknown>()
   const backing: FlashStore<string, unknown> = Reflect.get(store, 'flashStore')
   const close = backing.close.bind(backing)
   backing.close = async () => {
@@ -158,9 +150,8 @@ test('close preserves both write and close failures', async (t) => {
 })
 
 test('Map operations reflect cached data and queue persistence', async (t) => {
-  const dir = await mkdtemp(join(tmpdir(), 'flash-store-sync-'))
-  t.after(() => rm(dir, { recursive: true, force: true }))
-  const store = new FlashStoreSync<string, number>(dir)
+  const { open, openSync } = testStore(t)
+  const store = openSync<string, number>()
   await store.ready()
   store.set('a', 1).set('b', 2)
   assert.equal(store.getOrInsert('a', 100), 1)
@@ -193,7 +184,7 @@ test('Map operations reflect cached data and queue persistence', async (t) => {
   assert.equal(store.delete('a'), true)
   await store.close()
   assert.throws(() => store.set('c', 3), /closing/)
-  const reopened = new FlashStore<string, number>(dir)
+  const reopened = open<string, number>()
   assert.deepEqual(await Array.fromAsync(reopened.entries()), [
     ['b', 2],
     ['c', 3],
