@@ -23,14 +23,14 @@
     "npm": ">=11"
   },
   "scripts": {
-    "build": "tsc && node scripts/prepare-package.ts",
+    "build": "node scripts/prepare-package.ts && tsc",
     "prepack": "npm run build",
     "demo": "node example/demo.ts",
     "benchmark": "node scripts/benchmark.ts",
     "lint": "biome check src example scripts tests web-test-runner.config.js tsconfig.json package.json biome.json .github/coverage-baselines",
     "typecheck": "tsc --noEmit",
     "test": "npm run typecheck && npm run lint && npm run test:unit",
-    "test:unit": "node --test src/*.test.ts",
+    "test:unit": "node --test \"src/**/*.test.ts\"",
     "test:deno": "npm run test:unit:deno",
     "coverage:node": "node scripts/coverage.ts node",
     "coverage:deno": "node scripts/coverage.ts deno",
@@ -74,8 +74,8 @@
   },
   "files": [
     "dist/src/",
-    "!dist/src/*.test.*",
-    "!dist/src/test-fixture.*",
+    "!dist/src/**/*.test.*",
+    "!dist/src/**/test-fixture.*",
     "dist/package.json"
   ],
   "publishConfig": {

@@ -94,9 +94,13 @@ await cache.close()
 The constructor takes a database name scoped to the current origin. Its
 operations wait for IndexedDB to open. `destroy()` deletes that named database
 and waits for other connections to release it. Flash Store connections close
-when Chrome requests a version change or deletion. A handle closed by a peer's
-deletion request rejects its own later `destroy()` so it cannot remove a
-replacement database. A synchronous cache sees its own writes and the snapshot restored by `ready()`. If another tab changes
+when Chrome requests an upgrade or deletion. A handle closed by that event
+rejects a later `destroy()`. Once you explicitly call `close()`, the handle
+stops receiving database events. A later `destroy()` uses the database name,
+which can refer to a replacement created by another tab. Call `destroy()`
+directly on an open handle when you intend to remove its database.
+
+A synchronous cache sees its own writes and the snapshot restored by `ready()`. If another tab changes
 the database, reopen the cache to read the updated state. Browser data is
 subject to site storage quotas and eviction.
 
@@ -176,8 +180,9 @@ the browser suite with `npx playwright install chromium`.
 `npm run test:integration` and `npm run test:integration:deno` exercise raw
 LMDB and native diagnostics. `npm run coverage:node` and
 `npm run coverage:deno` enforce independent line, branch, and function floors
-for the native adapter and shared sources. CI uploads each runtime's LCOV
-and HTML reports. `npm run test:pack` verifies the installed package in Node,
+for the native adapter and shared sources. The coverage check fails if an
+executable production file in that scope is absent from the runtime report.
+CI uploads each runtime's LCOV and HTML reports. `npm run test:pack` verifies the installed package in Node,
 Deno, and Chromium and checks consumer type resolution. The Chromium smoke
 test covers both bundled and direct ESM loading.
 

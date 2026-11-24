@@ -53,7 +53,7 @@ class LmdbBackend implements StoreBackend {
   }
 
   /** Counts the entries in the current snapshot. */
-  count(): number {
+  async count(): Promise<number> {
     return this.db.getCount()
   }
 

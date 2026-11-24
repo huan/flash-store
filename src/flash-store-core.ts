@@ -160,10 +160,10 @@ export class FlashStoreCore<K extends StoreKey, V> {
     this.backend.publish?.('clear')
   }
 
-  /** Resolves to the number of entries in the current snapshot. */
+  /** Starts counting immediately and resolves to the size of that read snapshot. */
   get size(): Promise<number> {
     log.verbose('FlashStore', 'size()')
-    return Promise.resolve().then(() => this.backend.count())
+    return this.backend.count()
   }
 
   /** Iterates a snapshot in storage key order and releases it on early exit. */

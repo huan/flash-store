@@ -28,7 +28,8 @@ export interface StoreBackend {
   has(key: StoreKey): boolean | Promise<boolean>
   delete(key: StoreKey): Promise<boolean>
   clear(): Promise<void>
-  count(): number | Promise<number>
+  /** Starts a count on the current read snapshot before returning its promise. */
+  count(): Promise<number>
   scan(range: ScanRange): Iterable<StoredEntry> | Promise<Iterable<StoredEntry>>
   close(): Promise<void>
   destroy(): Promise<void>

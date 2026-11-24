@@ -1,11 +1,12 @@
 /**
  * Collects native runtime coverage, checks independent baselines, and emits local reports.
  * Measures the shared API and native adapter. Chromium verifies its own adapter.
- * Node emits LCOV, and Deno supplies LCOV and HTML directly.
+ * Node emits LCOV, and Deno supplies LCOV and HTML directly. Both reports must
+ * include the executable native sources before their counters are checked.
  */
 import { execFile } from 'node:child_process'
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { relative, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
 const exec = promisify(execFile)
@@ -22,11 +23,19 @@ const baseline: Record<'lines' | 'branches' | 'functions', number> = JSON.parse(
   ),
 )
 const nativeIntegration = 'tests/native.integration.test.ts'
-const browserAndTestSources = ['browser', 'indexeddb-backend', 'test-fixture']
+// IndexedDB needs Chromium. The contract module only contributes types, and
+// the shared test fixture is excluded from production coverage as well.
+const excludedSources = [
+  'browser',
+  'indexeddb-backend',
+  'store-backend',
+  'test-fixture',
+]
+const excludedPaths = excludedSources.map((name) => `src/${name}.ts`)
 const denoScope = [
-  '--include=/src/[^/]+\\.ts$',
-  '--exclude=\\.test\\.ts$',
-  ...browserAndTestSources.map((name) => `--exclude=/src/${name}\\.ts$`),
+  '--include=/src/.*\\.ts$',
+  '--exclude=\\.(?:test|d)\\.ts$',
+  ...excludedSources.map((name) => `--exclude=/src/${name}\\.ts$`),
 ]
 const directory = resolve('coverage', runtime)
 await mkdir(directory, { recursive: true })
@@ -37,14 +46,13 @@ if (runtime === 'node') {
     [
       '--test',
       '--experimental-test-coverage',
-      '--test-coverage-include=src/*.ts',
-      '--test-coverage-exclude=src/*.test.ts',
-      ...browserAndTestSources.map(
-        (name) => `--test-coverage-exclude=src/${name}.ts`,
-      ),
+      '--test-coverage-include=src/**/*.ts',
+      '--test-coverage-exclude=src/**/*.test.ts',
+      '--test-coverage-exclude=src/**/*.d.ts',
+      ...excludedPaths.map((file) => `--test-coverage-exclude=${file}`),
       '--test-coverage-include-all',
       '--test-reporter=lcov',
-      'src/*.test.ts',
+      'src/**/*.test.ts',
       nativeIntegration,
     ],
     { maxBuffer: 10 * 1024 * 1024 },
@@ -109,6 +117,31 @@ if (runtime === 'node') {
   await rm(html, { recursive: true, force: true })
   await exec('deno', ['coverage', '--html', ...denoScope, raw])
 }
+
+/** Normalizes Node's relative and Deno's absolute report paths to the same project paths. */
+function sourcePath(file: string): string {
+  return relative(process.cwd(), resolve(file)).replaceAll('\\', '/')
+}
+
+const expected = (
+  await readdir('src', { recursive: true, withFileTypes: true })
+)
+  .filter(
+    (entry) =>
+      entry.isFile() &&
+      entry.name.endsWith('.ts') &&
+      !/\.(?:test|d)\.ts$/.test(entry.name),
+  )
+  .map((entry) => sourcePath(resolve(entry.parentPath, entry.name)))
+  .filter((file) => !excludedPaths.includes(file))
+const recorded = new Set(
+  [...lcov.matchAll(/^SF:(.+)$/gm)].map((match) => sourcePath(match[1] ?? '')),
+)
+const missing = expected.filter((file) => !recorded.has(file))
+if (missing.length > 0)
+  throw new Error(
+    `${runtime} coverage is missing executable sources: ${missing.sort().join(', ')}`,
+  )
 
 for (const [metric, found, hit] of [
   ['lines', 'LF', 'LH'],

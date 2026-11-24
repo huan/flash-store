@@ -1,7 +1,7 @@
 /**
- * Places the package manifest beside compiled modules for runtime version reporting.
- * This runs only after a successful package build.
+ * Clears generated packaging output before TypeScript emits the current
+ * module tree and its imported manifest. It owns only the repository's dist directory.
  */
-import { copyFile } from 'node:fs/promises'
+import { rm } from 'node:fs/promises'
 
-await copyFile('package.json', 'dist/package.json')
+await rm(new URL('../dist', import.meta.url), { recursive: true, force: true })

@@ -43,7 +43,7 @@ export class IndexedDbBackend implements StoreBackend {
   private readonly connection: Promise<IDBDatabase>
   private readonly pending = new Set<Promise<unknown>>()
   private closing = false
-  private deletionRequestedElsewhere = false
+  private invalidated = false
 
   /** Starts opening the database. Operations surface any open failure. */
   constructor(name: string) {
@@ -54,9 +54,9 @@ export class IndexedDbBackend implements StoreBackend {
       request.onerror = () => reject(request.error)
       request.onsuccess = () => {
         const db = request.result
-        db.onversionchange = (event) => {
-          // A peer deletion can be followed by a fresh database with the same name.
-          this.deletionRequestedElsewhere = event.newVersion === null
+        db.onversionchange = () => {
+          // A peer may upgrade or replace the database after this handle releases it.
+          this.invalidated = true
           this.closing = true
           db.close()
         }
@@ -188,10 +188,12 @@ export class IndexedDbBackend implements StoreBackend {
     db.close()
   }
 
-  /** Deletes this database after the facade has closed this connection. */
+  /** Deletes by name after close, rejecting handles invalidated by a version change. */
   async destroy(): Promise<void> {
-    if (this.deletionRequestedElsewhere)
-      throw new Error('Store was closed for an external database deletion')
+    if (this.invalidated)
+      throw new Error(
+        'Store was closed for an external database version change',
+      )
     return new Promise((resolve, reject) => {
       const request = indexedDB.deleteDatabase(this.name)
       request.onsuccess = () => resolve()

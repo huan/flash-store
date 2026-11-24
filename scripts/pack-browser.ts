@@ -168,7 +168,7 @@ export async function smokeBrowser(directory: string): Promise<void> {
         () => false,
         (error: unknown) =>
           error instanceof Error &&
-          /external database deletion/.test(error.message),
+          /external database version change/.test(error.message),
       )
       return { closed, deletionRejected }
     })
@@ -184,6 +184,47 @@ export async function smokeBrowser(directory: string): Promise<void> {
       { bundleUrl, name },
     )
     assert.equal(replacementValue, 99)
+
+    const upgradedValue = await page.evaluate(async (bundleUrl) => {
+      const api: typeof import('../src/browser.ts') = await import(bundleUrl)
+      const name = 'schema-upgrade'
+      const previous = new api.FlashStore(name)
+      await previous.set('keep', 42)
+      /** Opens the upgraded schema without giving the old handle access to it. */
+      function openUpgraded(): Promise<IDBDatabase> {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(`flash-store:${name}`, 2)
+          request.onsuccess = () => resolve(request.result)
+          request.onerror = () => reject(request.error)
+        })
+      }
+      const upgraded = await openUpgraded()
+      upgraded.close()
+      await previous.destroy().then(
+        () => {
+          throw new Error('Old handle deleted the upgraded database')
+        },
+        (error: unknown) => {
+          if (
+            !(error instanceof Error) ||
+            !/external database version change/.test(error.message)
+          )
+            throw error
+        },
+      )
+      const database = await openUpgraded()
+      try {
+        return await new Promise<unknown>((resolve, reject) => {
+          const transaction = database.transaction('records')
+          const request = transaction.objectStore('records').getAll()
+          transaction.oncomplete = () => resolve(request.result[0])
+          transaction.onabort = () => reject(transaction.error)
+        })
+      } finally {
+        database.close()
+      }
+    }, bundleUrl)
+    assert.equal(upgradedValue, '42')
   } finally {
     await browser.close()
   }

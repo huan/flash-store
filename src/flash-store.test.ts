@@ -337,3 +337,29 @@ test('a failed removal can be retried on the same handle', async (t) => {
   await store.destroy()
   assert.equal(await open().size, 0)
 })
+
+test('size starts its read before a later write or close', async (t) => {
+  const store = testStore(t).open<string, number>()
+  await store.set('first', 1)
+  const sizeBeforeWrite = store.size
+  const [size] = await Promise.all([sizeBeforeWrite, store.set('second', 2)])
+  assert.equal(size, 1)
+
+  const sizeBeforeClose = store.size
+  const [finalSize] = await Promise.all([sizeBeforeClose, store.close()])
+  assert.equal(finalSize, 2)
+})
+
+test('deletes are atomic across two handles to the same store', async (t) => {
+  const { open } = testStore(t)
+  const first = open<string, number>()
+  const second = open<string, number>()
+  await first.set('shared', 1)
+  const results = await Promise.all([
+    first.delete('shared'),
+    second.delete('shared'),
+  ])
+  assert.equal(results.filter(Boolean).length, 1)
+  assert.equal(await first.has('shared'), false)
+  assert.equal(await second.has('shared'), false)
+})
