@@ -5,8 +5,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { FlashStore, FlashStoreSync } from '#test-store'
-import type { StoreBackend } from './store-backend.ts'
 import { testStore } from './test-fixture.ts'
+import type { StoreBackend } from './universal/store-backend.ts'
 
 /** Inject a rejected write at the shared storage boundary. */
 function failWrites(store: FlashStoreSync<string, unknown>): void {

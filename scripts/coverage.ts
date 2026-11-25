@@ -28,13 +28,18 @@ const nativeIntegration = 'tests/native.integration.test.ts'
 const excludedSources =
   runtime === 'browser'
     ? [
-        'flash-store',
-        'flash-store-sync',
-        'mod',
-        'store-backend',
+        'server/flash-store',
+        'server/flash-store-sync',
+        'server/mod',
+        'universal/store-backend',
         'test-fixture',
       ]
-    : ['browser', 'indexeddb-backend', 'store-backend', 'test-fixture']
+    : [
+        'universal/mod',
+        'universal/indexeddb-backend',
+        'universal/store-backend',
+        'test-fixture',
+      ]
 const excludedPaths = excludedSources.map((name) => `src/${name}.ts`)
 const denoScope = [
   '--include=/src/.*\\.ts$',

@@ -36,7 +36,7 @@ export async function smokeBrowser(directory: string): Promise<void> {
       <script type="importmap">
         {
           "imports": {
-            "flash-store/browser": "/node_modules/flash-store/dist/src/browser.js",
+            "flash-store/browser": "/node_modules/flash-store/dist/src/universal/mod.js",
             "brolog": "/node_modules/brolog/dist/esm/src/mod.js"
           }
         }
@@ -69,8 +69,8 @@ export async function smokeBrowser(directory: string): Promise<void> {
     const name = 'packed-flash-store'
     const version = await page.evaluate(
       async ({ bundleUrl, name }) => {
-        const api: typeof import('../src/browser.ts') & {
-          ExplicitBrowserStore: typeof import('../src/browser.ts').FlashStore
+        const api: typeof import('../src/universal/mod.ts') & {
+          ExplicitBrowserStore: typeof import('../src/universal/mod.ts').FlashStore
         } = await import(bundleUrl)
         if (
           api.default !== api.FlashStore ||
@@ -92,7 +92,9 @@ export async function smokeBrowser(directory: string): Promise<void> {
     await page.reload()
     const read = await page.evaluate(async (name) => {
       const specifier = 'flash-store/browser'
-      const api: typeof import('../src/browser.ts') = await import(specifier)
+      const api: typeof import('../src/universal/mod.ts') = await import(
+        specifier
+      )
       if (api.default !== api.FlashStore || !/^2\./.test(api.VERSION))
         throw new Error('Unbundled ESM exports or package metadata are invalid')
       const reopened = new api.FlashStoreSync(name)
@@ -104,7 +106,7 @@ export async function smokeBrowser(directory: string): Promise<void> {
     assert.deepEqual(read, { value: 42 })
 
     const nativeKeyInspection = await page.evaluate(async (name) => {
-      const api: typeof import('../src/browser.ts') = await import(
+      const api: typeof import('../src/universal/mod.ts') = await import(
         'flash-store/browser'
       )
       const store = new api.FlashStore(name)
@@ -150,7 +152,7 @@ export async function smokeBrowser(directory: string): Promise<void> {
     assert.deepEqual(nativeKeyInspection.unicodeKeys, ['\u{10000}', '\uE000'])
 
     const failedOpenDestroyed = await page.evaluate(async () => {
-      const api: typeof import('../src/browser.ts') = await import(
+      const api: typeof import('../src/universal/mod.ts') = await import(
         'flash-store/browser'
       )
       const name = 'failed-open-cleanup'
@@ -187,7 +189,9 @@ export async function smokeBrowser(directory: string): Promise<void> {
     await peer.goto(origin)
     await peer.evaluate(
       async ({ bundleUrl, name }) => {
-        const api: typeof import('../src/browser.ts') = await import(bundleUrl)
+        const api: typeof import('../src/universal/mod.ts') = await import(
+          bundleUrl
+        )
         const store = new api.FlashStore(name)
         // Keep the connection alive in this page while the other page deletes it.
         if (!(await store.has('key')))
@@ -198,7 +202,9 @@ export async function smokeBrowser(directory: string): Promise<void> {
     )
     const destroyed = await page.evaluate(
       async ({ bundleUrl, name }) => {
-        const api: typeof import('../src/browser.ts') = await import(bundleUrl)
+        const api: typeof import('../src/universal/mod.ts') = await import(
+          bundleUrl
+        )
         const store = new api.FlashStore(name)
         const put = IDBObjectStore.prototype.put
         let windowErrorFired = false
@@ -286,7 +292,7 @@ export async function smokeBrowser(directory: string): Promise<void> {
     assert.equal(destroyed, true)
 
     const stalePeer = await peer.evaluate(async () => {
-      const store: import('../src/browser.ts').FlashStore | undefined =
+      const store: import('../src/universal/mod.ts').FlashStore | undefined =
         Reflect.get(globalThis, 'peerStore')
       if (!store) throw new Error('Missing peer store')
       const closed = await store.get('key').then(
@@ -305,7 +311,9 @@ export async function smokeBrowser(directory: string): Promise<void> {
     assert.deepEqual(stalePeer, { closed: true, deletionRejected: true })
     const replacementValue = await page.evaluate(
       async ({ bundleUrl, name }) => {
-        const api: typeof import('../src/browser.ts') = await import(bundleUrl)
+        const api: typeof import('../src/universal/mod.ts') = await import(
+          bundleUrl
+        )
         const replacement = new api.FlashStore(name)
         const value = await replacement.get('replacement')
         await replacement.destroy()
@@ -316,7 +324,9 @@ export async function smokeBrowser(directory: string): Promise<void> {
     assert.equal(replacementValue, 99)
 
     const upgradedValue = await page.evaluate(async (bundleUrl) => {
-      const api: typeof import('../src/browser.ts') = await import(bundleUrl)
+      const api: typeof import('../src/universal/mod.ts') = await import(
+        bundleUrl
+      )
       const name = 'schema-upgrade'
       const previous = new api.FlashStore(name)
       await previous.set('keep', 42)

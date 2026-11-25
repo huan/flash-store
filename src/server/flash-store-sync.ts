@@ -1,8 +1,9 @@
 /**
  * Binds the shared synchronous Map cache to the native LMDB-backed store.
  */
+
+import { FlashStoreSyncCore } from '../universal/flash-store-sync-core.ts'
 import { FlashStore, type StoreKey } from './flash-store.ts'
-import { FlashStoreSyncCore } from './flash-store-sync-core.ts'
 
 /** In-memory Map with ordered write-back to LMDB. */
 export class FlashStoreSync<
