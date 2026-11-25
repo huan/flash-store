@@ -1,40 +1,38 @@
 /**
- * Implements durable browser storage over IndexedDB. Encoded keys preserve
- * LMDB ordering, and transaction ownership stays inside this backend so
- * awaiting an async iterator cannot leave an IndexedDB cursor inactive.
+ * Implements durable browser storage over IndexedDB using native keys.
+ * Transaction ownership stays inside this backend so awaiting an async
+ * iterator cannot leave an IndexedDB cursor inactive.
  */
-import { readKey } from 'ordered-binary'
 import type { StoreKey } from './flash-store-core.ts'
-import { encodeKey, encodePrefixEnd } from './key-encoding.ts'
 import type { ScanRange, StoreBackend, StoredEntry } from './store-backend.ts'
 
 const records = 'records'
 
-/** Decodes the keys written by this backend, including IndexedDB's ArrayBuffer output. */
-function decode(key: IDBValidKey): StoreKey {
-  const bytes = new Uint8Array(key as ArrayBuffer)
-  return readKey(bytes, 0, bytes.length) as StoreKey
+/** Returns the next string strictly greater than any string with the given prefix. */
+function prefixEnd(prefix: string): string | undefined {
+  if (prefix === '') return undefined
+  let i = prefix.length - 1
+  while (i >= 0 && prefix.charCodeAt(i) === 0xffff) i--
+  if (i < 0) return undefined
+  return prefix.slice(0, i) + String.fromCharCode(prefix.charCodeAt(i) + 1)
 }
 
 /** Returns a bounded IndexedDB range or null for an empty interval. */
 function keyRange(range: ScanRange): IDBKeyRange | null | undefined {
-  const lower = range.prefix ?? range.lower
-  const start = lower === undefined ? undefined : encodeKey(lower)
-  const end =
-    range.prefix === undefined
-      ? range.upper === undefined
-        ? undefined
-        : encodeKey(range.upper)
-      : encodePrefixEnd(range.prefix)
-  const upperOpen = range.prefix !== undefined || range.upperOpen
-  if (start && end) {
+  const isPrefix = range.prefix !== undefined
+  const start = range.prefix !== undefined ? range.prefix : range.lower
+  const end = range.prefix !== undefined ? prefixEnd(range.prefix) : range.upper
+  const lowerOpen = isPrefix ? false : range.lowerOpen
+  const upperOpen = isPrefix ? end !== undefined : range.upperOpen
+
+  if (start !== undefined && end !== undefined) {
     const order = indexedDB.cmp(start, end)
-    if (order > 0 || (order === 0 && (range.lowerOpen || upperOpen)))
-      return null
-    return IDBKeyRange.bound(start, end, range.lowerOpen, upperOpen)
+    if (order > 0 || (order === 0 && (lowerOpen || upperOpen))) return null
+    return IDBKeyRange.bound(start, end, lowerOpen, upperOpen)
   }
-  if (start) return IDBKeyRange.lowerBound(start, range.lowerOpen)
-  if (end) return IDBKeyRange.upperBound(end, upperOpen)
+  if (start !== undefined) return IDBKeyRange.lowerBound(start, lowerOpen)
+  if (end !== undefined) return IDBKeyRange.upperBound(end, upperOpen)
+  return undefined
 }
 
 /** Connects one browser store handle to an origin-scoped IndexedDB database. */
@@ -83,6 +81,7 @@ export class IndexedDbBackend implements StoreBackend {
           const tx = db.transaction(records, mode)
           let result: T
           tx.oncomplete = () => resolve(result)
+          tx.onerror = (event) => event.preventDefault()
           tx.onabort = () =>
             reject(tx.error ?? new Error('IndexedDB transaction aborted'))
           try {
@@ -111,34 +110,31 @@ export class IndexedDbBackend implements StoreBackend {
     })
   }
 
-  /** Commits serialized JSON under the encoded key. */
+  /** Commits serialized JSON under the key. */
   put(key: StoreKey, json: string): Promise<void> {
     return this.transaction('readwrite', (store, result) => {
-      store.put(json, encodeKey(key))
+      store.put(json, key)
       result(undefined)
     })
   }
 
   /** Reads stored JSON or returns undefined for a missing key. */
   get(key: StoreKey): Promise<string | undefined> {
-    return this.read((store) => store.get(encodeKey(key)))
+    return this.read((store) => store.get(key))
   }
 
   /** Reads presence without retrieving the value. */
   async has(key: StoreKey): Promise<boolean> {
-    return (
-      (await this.read((store) => store.getKey(encodeKey(key)))) !== undefined
-    )
+    return (await this.read((store) => store.getKey(key))) !== undefined
   }
 
   /** Checks existence and deletes atomically so concurrent callers get their own result. */
   delete(key: StoreKey): Promise<boolean> {
     return this.transaction('readwrite', (store, result) => {
-      const bytes = encodeKey(key)
-      const request = store.getKey(bytes)
+      const request = store.getKey(key)
       request.onsuccess = () => {
         const exists = request.result !== undefined
-        if (exists) store.delete(bytes)
+        if (exists) store.delete(key)
         result(exists)
       }
     })
@@ -168,7 +164,7 @@ export class IndexedDbBackend implements StoreBackend {
       request.onsuccess = () => {
         const cursor = request.result
         if (!cursor) return
-        const key = decode(cursor.key)
+        const key = cursor.key as StoreKey
         if (
           range.prefix !== undefined &&
           (typeof key !== 'string' || !key.startsWith(range.prefix))
@@ -184,8 +180,12 @@ export class IndexedDbBackend implements StoreBackend {
   async close(): Promise<void> {
     this.closing = true
     await Promise.allSettled(this.pending)
-    const db = await this.connection
-    db.close()
+    try {
+      const db = await this.connection
+      db.close()
+    } catch {
+      // If opening the database failed, it is already closed.
+    }
   }
 
   /** Deletes by name after close, rejecting handles invalidated by a version change. */

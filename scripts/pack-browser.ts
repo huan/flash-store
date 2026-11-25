@@ -32,12 +32,12 @@ export async function smokeBrowser(directory: string): Promise<void> {
     const origin = 'https://flash-store.test/'
     const bundleUrl = new URL('store.js', origin).href
     const html = `<!doctype html><title>Flash Store smoke test</title>
+      <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';">
       <script type="importmap">
         {
           "imports": {
             "flash-store/browser": "/node_modules/flash-store/dist/src/browser.js",
-            "brolog": "/node_modules/brolog/dist/esm/src/mod.js",
-            "ordered-binary": "/node_modules/ordered-binary/index.js"
+            "brolog": "/node_modules/brolog/dist/esm/src/mod.js"
           }
         }
       </script>`
@@ -52,7 +52,7 @@ export async function smokeBrowser(directory: string): Promise<void> {
         return route.fulfill({ contentType: 'text/html', body: html })
       const { pathname } = new URL(url)
       if (
-        !/^\/node_modules\/(?:flash-store\/dist\/|brolog\/dist\/esm\/|ordered-binary\/index\.js$)/.test(
+        !/^\/node_modules\/(?:flash-store\/dist\/|brolog\/dist\/esm\/)/.test(
           pathname,
         )
       )
@@ -103,6 +103,86 @@ export async function smokeBrowser(directory: string): Promise<void> {
     }, name)
     assert.deepEqual(read, { value: 42 })
 
+    const nativeKeyInspection = await page.evaluate(async (name) => {
+      const api: typeof import('../src/browser.ts') = await import(
+        'flash-store/browser'
+      )
+      const store = new api.FlashStore(name)
+      await store.set('string-key', 'val-str')
+      await store.set(123, 'val-num')
+      await store.set('\u{10000}', 'supplementary')
+      await store.set('\uE000', 'bmp')
+
+      const rawDb: IDBDatabase = await new Promise((resolve, reject) => {
+        const req = indexedDB.open(`flash-store:${name}`)
+        req.onsuccess = () => resolve(req.result)
+        req.onerror = () => reject(req.error)
+      })
+      try {
+        const tx = rawDb.transaction('records', 'readonly')
+        const objStore = tx.objectStore('records')
+        const rawKeys: unknown[] = await new Promise((resolve, reject) => {
+          const req = objStore.getAllKeys()
+          req.onsuccess = () => resolve(req.result)
+          req.onerror = () => reject(req.error)
+        })
+        const keyTypes = rawKeys.map((k) => typeof k)
+        const isNotBinary = rawKeys.every(
+          (k) => !(k instanceof ArrayBuffer) && !ArrayBuffer.isView(k),
+        )
+        const unicodeKeys = rawKeys.filter(
+          (k) => k === '\u{10000}' || k === '\uE000',
+        )
+        return { keyTypes, isNotBinary, unicodeKeys }
+      } finally {
+        rawDb.close()
+        await store.close()
+      }
+    }, name)
+    assert.deepEqual(nativeKeyInspection.keyTypes, [
+      'number',
+      'string',
+      'string',
+      'string',
+      'string',
+    ])
+    assert.equal(nativeKeyInspection.isNotBinary, true)
+    assert.deepEqual(nativeKeyInspection.unicodeKeys, ['\u{10000}', '\uE000'])
+
+    const failedOpenDestroyed = await page.evaluate(async () => {
+      const api: typeof import('../src/browser.ts') = await import(
+        'flash-store/browser'
+      )
+      const name = 'failed-open-cleanup'
+      const existing: IDBDatabase = await new Promise((resolve, reject) => {
+        const req = indexedDB.open(`flash-store:${name}`, 2)
+        req.onsuccess = () => resolve(req.result)
+        req.onerror = () => reject(req.error)
+      })
+      existing.close()
+
+      const store = new api.FlashStore(name)
+      await store.get('any').then(
+        () => {
+          throw new Error('Expected open to fail on version mismatch')
+        },
+        () => {},
+      )
+
+      await store.destroy()
+
+      const fresh: IDBDatabase = await new Promise((resolve, reject) => {
+        const req = indexedDB.open(`flash-store:${name}`, 1)
+        req.onsuccess = () => resolve(req.result)
+        req.onerror = () => reject(req.error)
+      })
+      const version = fresh.version
+      fresh.close()
+      await new api.FlashStore(name).destroy()
+      return version === 1
+    })
+    assert.equal(failedOpenDestroyed, true)
+
     const peer = await context.newPage()
     await peer.goto(origin)
     await peer.evaluate(
@@ -121,6 +201,11 @@ export async function smokeBrowser(directory: string): Promise<void> {
         const api: typeof import('../src/browser.ts') = await import(bundleUrl)
         const store = new api.FlashStore(name)
         const put = IDBObjectStore.prototype.put
+        let windowErrorFired = false
+        const onError = () => {
+          windowErrorFired = true
+        }
+        window.addEventListener('error', onError)
         IDBObjectStore.prototype.put = function (...args) {
           const request = put.apply(this, args)
           // Abort after the put request succeeds, before the transaction commits.
@@ -141,7 +226,10 @@ export async function smokeBrowser(directory: string): Promise<void> {
           )
         } finally {
           IDBObjectStore.prototype.put = put
+          window.removeEventListener('error', onError)
         }
+        if (windowErrorFired)
+          throw new Error('Aborted transaction error bubbled to window')
         if (await store.has('aborted'))
           throw new Error('Aborted write persisted')
         await store.destroy()

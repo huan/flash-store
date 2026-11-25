@@ -68,8 +68,7 @@ to resolve the entry and its two bare imports:
 {
   "imports": {
     "flash-store/browser": "/node_modules/flash-store/dist/src/browser.js",
-    "brolog": "/node_modules/brolog/dist/esm/src/mod.js",
-    "ordered-binary": "/node_modules/ordered-binary/index.js"
+    "brolog": "/node_modules/brolog/dist/esm/src/mod.js"
   }
 }
 </script>
@@ -113,9 +112,8 @@ and `size`, plus async iteration through `entries`, `keys`, and `values`.
 Keys are finite numbers or strings without null characters; values use JSON
 serialization. Numeric keys sort naturally before strings. Both backends enforce the default LMDB limit of 1978 encoded bytes per key.
 See the [LMDB documentation](https://github.com/kriszyp/lmdb-js#keys).
-For arbitrary string identifiers, encode embedded control characters and
-unpaired UTF-16 surrogates before storing them as keys. The inherited
-ordered-binary codec can change those characters when decoding long keys.
+For arbitrary string identifiers in LMDB, encode embedded control characters and
+unpaired UTF-16 surrogates before storing them as keys.
 
 Values are serialized with `JSON.stringify` and read back with `JSON.parse`.
 This is not a lossless round trip for every JavaScript value: for example,
@@ -244,7 +242,7 @@ the benchmark CLI, its option validation, and temporary-directory cleanup.
 
 See the [documentation](https://huan.github.io/flash-store).
 
-* [ECMAScript 6: Maps - 2ality – JavaScript and more](http://2ality.com/2015/01/es6-maps-sets.html)
+- [ECMAScript 6: Maps - 2ality – JavaScript and more](http://2ality.com/2015/01/es6-maps-sets.html)
 
 ## Version History
 
@@ -277,6 +275,6 @@ Long answer:
 
 ## Copyright & License
 
-* Code & Docs © 2017-now Huan Li \<huan@chatie.io\>
-* Code released under the Apache-2.0 License
-* Docs released under Creative Commons
+- Code & Docs © 2017-now Huan Li \<huan@chatie.io\>
+- Code released under the Apache-2.0 License
+- Docs released under Creative Commons

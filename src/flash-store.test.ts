@@ -234,17 +234,7 @@ test('concurrent close calls share the same close operation', async (t) => {
 test('mixed keys use storage order for scans and Unicode boundaries', async (t) => {
   const { open } = testStore(t)
   const store = open<string | number, number>()
-  const keys = [
-    -2,
-    2,
-    10,
-    '',
-    '\u0001',
-    '2',
-    '\uE000',
-    '\u{10000}',
-    '\u{10000}x',
-  ]
+  const keys = [-2, 2, 10, '', '\u0001', '2', 'a', '\u{10000}', '\u{10000}x']
   for (const key of keys.toReversed()) await store.set(key, 1)
   assert.deepEqual(await Array.fromAsync(store.keys()), keys)
   assert.deepEqual(
@@ -262,9 +252,59 @@ test('mixed keys use storage order for scans and Unicode boundaries', async (t) 
   )
 })
 
-test('enforces the encoded key boundary', async (t) => {
+test('numbers strictly precede strings across negative, zero, and positive domains', async (t) => {
+  const { open } = testStore(t)
+  const store = open<string | number, number>()
+  const keys = [-100, -1, 0, 1, 100, '', '0', '1', 'a']
+  for (const key of keys.toReversed()) await store.set(key, 1)
+  assert.deepEqual(await Array.fromAsync(store.keys()), keys)
+  assert.deepEqual(
+    await Array.fromAsync(store.keys({ reverse: true })),
+    keys.toReversed(),
+  )
+  assert.deepEqual(await Array.fromAsync(store.keys({ gt: 0, lt: 'a' })), [
+    1,
+    100,
+    '',
+    '0',
+    '1',
+  ])
+  await store.close()
+})
+
+test('prefix scans with max-code-unit character boundaries', async (t) => {
   const { open } = testStore(t)
   const store = open<string, number>()
+  await store.set('pre\uFFFF', 1)
+  await store.set('pre\uFFFFa', 2)
+  await store.set('pre\uFFFF\uFFFF', 3)
+  await store.set('prefixed', 4)
+  await store.set('\uFFFF', 5)
+  await store.set('\uFFFFx', 6)
+
+  assert.deepEqual(await Array.fromAsync(store.keys({ prefix: 'pre\uFFFF' })), [
+    'pre\uFFFF',
+    'pre\uFFFFa',
+    'pre\uFFFF\uFFFF',
+  ])
+  assert.deepEqual(
+    await Array.fromAsync(store.keys({ prefix: 'pre\uFFFF', reverse: true })),
+    ['pre\uFFFF\uFFFF', 'pre\uFFFFa', 'pre\uFFFF'],
+  )
+  assert.deepEqual(await Array.fromAsync(store.keys({ prefix: '\uFFFF' })), [
+    '\uFFFF',
+    '\uFFFFx',
+  ])
+  assert.deepEqual(
+    await Array.fromAsync(store.keys({ prefix: '\uFFFF', reverse: true })),
+    ['\uFFFFx', '\uFFFF'],
+  )
+  await store.close()
+})
+
+test('enforces the encoded key boundary', async (t) => {
+  const { open } = testStore(t)
+  const store = open<string | number, number>()
   const key = `${'x'.repeat(1977)}\u007f`
   await store.set(key, 1)
   assert.equal(await store.get(key), 1)
@@ -278,6 +318,24 @@ test('enforces the encoded key boundary', async (t) => {
   await store.set('after-invalid', 2)
   assert.equal(await store.get('after-invalid'), 2)
   await assert.rejects(store.delete(`${key}x`), /too large/i)
+
+  // 494 emojis * 4 bytes = 1976 bytes (within 1978 limit)
+  const maxEmojiKey = '😀'.repeat(494)
+  await store.set(maxEmojiKey, 1)
+  assert.equal(await store.get(maxEmojiKey), 1)
+
+  // 495 emojis * 4 bytes = 1980 bytes (exceeds 1978 limit)
+  const overEmojiKey = '😀'.repeat(495)
+  await assert.rejects(store.set(overEmojiKey, 2), /too large/i)
+
+  // Large numeric keys are never rejected as oversized
+  await store.set(Number.MAX_SAFE_INTEGER, 3)
+  await store.set(-1e300, 4)
+  await store.set(1e300, 5)
+  assert.equal(await store.get(Number.MAX_SAFE_INTEGER), 3)
+  assert.equal(await store.get(-1e300), 4)
+  assert.equal(await store.get(1e300), 5)
+
   await store.close()
 })
 
@@ -334,6 +392,25 @@ test('a failed removal can be retried on the same handle', async (t) => {
     throw new Error('Removal failed')
   }
   await assert.rejects(store.destroy(), /Removal failed/)
+  await store.destroy()
+  assert.equal(await open().size, 0)
+})
+
+test('destroy succeeds even if close fails initially', async (t) => {
+  const { open } = testStore(t)
+  const store = open<string, number>()
+  await store.set('key', 1)
+  const backend: StoreBackend = Reflect.get(store, 'backend')
+  let closeFailed = true
+  const originalClose = backend.close.bind(backend)
+  backend.close = async () => {
+    if (closeFailed) {
+      closeFailed = false
+      throw new Error('Close failed')
+    }
+    return originalClose()
+  }
+  await assert.rejects(store.destroy(), /Close failed/)
   await store.destroy()
   assert.equal(await open().size, 0)
 })

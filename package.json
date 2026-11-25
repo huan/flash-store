@@ -57,8 +57,7 @@
   "homepage": "https://github.com/huan/flash-store#readme",
   "dependencies": {
     "brolog": "^2.0.0",
-    "lmdb": "~3.5.9",
-    "ordered-binary": "1.6.3"
+    "lmdb": "~3.5.9"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.7",

@@ -173,3 +173,13 @@ test('diagnostic and tracing channels work without exposing stored data', async 
   }
   assert.deepEqual(seen, ['start', 'end'])
 })
+
+test('LMDB preserves UTF-8 code point ordering between BMP and supplementary characters', async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), 'flash-store-test-'))
+  const store = new FlashStore<string, number>(dir)
+  cleanupStore(t, store, dir)
+  // \uE000 (3 bytes: EE 80 80) precedes \u{10000} (4 bytes: F0 90 80 80) in UTF-8
+  await store.set('\u{10000}', 1)
+  await store.set('\uE000', 2)
+  assert.deepEqual(await Array.fromAsync(store.keys()), ['\uE000', '\u{10000}'])
+})

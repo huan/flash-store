@@ -224,8 +224,13 @@ export class FlashStoreCore<K extends StoreKey, V> {
   /** Closes the database after outstanding writes; repeated calls are safe. */
   async close(): Promise<void> {
     log.verbose('FlashStore', 'close()')
-    this.closePromise ??= this.backend.close()
-    await this.closePromise
+    try {
+      this.closePromise ??= this.backend.close()
+      await this.closePromise
+    } catch (error) {
+      this.closePromise = undefined
+      throw error
+    }
   }
 
   /** Closes this handle and removes its backing storage once. Failed removals can be retried. */
