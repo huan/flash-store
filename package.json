@@ -34,6 +34,7 @@
     "test:deno": "npm run test:unit:deno",
     "coverage:node": "node scripts/coverage.ts node",
     "coverage:deno": "node scripts/coverage.ts deno",
+    "coverage:browser": "node scripts/coverage.ts browser",
     "test:pack": "node scripts/pack-test.ts",
     "test:unit:deno": "deno test --no-check --allow-read --allow-write --allow-env --allow-ffi --allow-sys=homedir src/",
     "test:unit:browser": "wtr --config web-test-runner.config.js",

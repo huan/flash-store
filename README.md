@@ -176,10 +176,10 @@ the Node unit tests. The same unit test files run with
 the browser suite with `npx playwright install chromium`.
 
 `npm run test:integration` and `npm run test:integration:deno` exercise raw
-LMDB and native diagnostics. `npm run coverage:node` and
-`npm run coverage:deno` enforce independent line, branch, and function floors
-for the native adapter and shared sources. The coverage check fails if an
-executable production file in that scope is absent from the runtime report.
+LMDB and native diagnostics. `npm run coverage:node`, `npm run coverage:deno`,
+and `npm run coverage:browser` enforce independent line, branch, and function
+floors for each runtime adapter and shared sources. The coverage check fails if
+an executable production file in that scope is absent from the runtime report.
 CI uploads each runtime's LCOV and HTML reports. `npm run test:pack` verifies the installed package in Node,
 Deno, and Chromium and checks consumer type resolution. The Chromium smoke
 test covers both bundled and direct ESM loading.

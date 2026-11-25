@@ -1,18 +1,18 @@
 /**
- * Collects native runtime coverage, checks independent baselines, and emits local reports.
- * Measures the shared API and native adapter. Chromium verifies its own adapter.
- * Node emits LCOV, and Deno supplies LCOV and HTML directly. Both reports must
- * include the executable native sources before their counters are checked.
+ * Collects runtime coverage, checks independent baselines, and emits local reports.
+ * Measures the shared API and runtime adapters in Node, Deno, and Chromium.
+ * Node and Chromium emit LCOV, and Deno supplies LCOV and HTML directly.
+ * Reports must include the executable sources for that runtime before counters are checked.
  */
 import { execFile } from 'node:child_process'
-import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
 const exec = promisify(execFile)
 const runtime = process.argv[2]
-if (runtime !== 'node' && runtime !== 'deno')
-  throw new Error('Expected node or deno')
+if (runtime !== 'node' && runtime !== 'deno' && runtime !== 'browser')
+  throw new Error('Expected node, deno, or browser')
 const baseline: Record<'lines' | 'branches' | 'functions', number> = JSON.parse(
   await readFile(
     new URL(
@@ -23,14 +23,18 @@ const baseline: Record<'lines' | 'branches' | 'functions', number> = JSON.parse(
   ),
 )
 const nativeIntegration = 'tests/native.integration.test.ts'
-// IndexedDB needs Chromium. The contract module only contributes types, and
-// the shared test fixture is excluded from production coverage as well.
-const excludedSources = [
-  'browser',
-  'indexeddb-backend',
-  'store-backend',
-  'test-fixture',
-]
+// The contract module only contributes types, and the shared test fixture
+// is excluded from production coverage.
+const excludedSources =
+  runtime === 'browser'
+    ? [
+        'flash-store',
+        'flash-store-sync',
+        'mod',
+        'store-backend',
+        'test-fixture',
+      ]
+    : ['browser', 'indexeddb-backend', 'store-backend', 'test-fixture']
 const excludedPaths = excludedSources.map((name) => `src/${name}.ts`)
 const denoScope = [
   '--include=/src/.*\\.ts$',
@@ -87,7 +91,7 @@ if (runtime === 'node') {
     resolve(directory, 'html/index.html'),
     `<!doctype html><meta charset="utf-8"><title>Node coverage</title><style>span{display:block}.hit{background:#e2f5e2}.miss{background:#ffe5e5}pre{overflow:auto}</style><h1>Node coverage</h1>${sections.join('')}`,
   )
-} else {
+} else if (runtime === 'deno') {
   const raw = resolve(directory, 'raw')
   const result = await exec(
     'deno',
@@ -116,6 +120,19 @@ if (runtime === 'node') {
   // Deno replaces the index while HTML pages from old paths can remain on disk.
   await rm(html, { recursive: true, force: true })
   await exec('deno', ['coverage', '--html', ...denoScope, raw])
+} else {
+  const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx'
+  const result = await exec(
+    npx,
+    ['wtr', '--config', 'web-test-runner.config.js', '--coverage'],
+    { maxBuffer: 10 * 1024 * 1024 },
+  )
+  process.stdout.write(result.stdout)
+  lcov = await readFile(resolve(directory, 'lcov.info'), 'utf8')
+  const lcovReport = resolve(directory, 'lcov-report')
+  const html = resolve(directory, 'html')
+  await rm(html, { recursive: true, force: true })
+  await cp(lcovReport, html, { recursive: true })
 }
 
 /** Normalizes Node's relative and Deno's absolute report paths to the same project paths. */

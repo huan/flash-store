@@ -8,6 +8,17 @@ import { playwrightLauncher } from '@web/test-runner-playwright'
 export default {
   files: 'src/**/*.test.ts',
   nodeResolve: { exportConditions: ['browser'] },
+  coverageConfig: {
+    include: ['src/**/*.ts'],
+    exclude: [
+      'src/**/*.test.ts',
+      'src/test-fixture.ts',
+      'src/flash-store.ts',
+      'src/flash-store-sync.ts',
+    ],
+    reportDir: 'coverage/browser',
+    reporters: ['lcov', 'html'],
+  },
   plugins: [
     {
       name: 'flash-store-browser-tests',
