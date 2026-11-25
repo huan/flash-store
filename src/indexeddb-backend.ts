@@ -80,16 +80,37 @@ export class IndexedDbBackend implements StoreBackend {
         new Promise<T>((resolve, reject) => {
           const tx = db.transaction(records, mode)
           let result: T
+          let requestError: DOMException | Error | null = null
           tx.oncomplete = () => resolve(result)
-          tx.onerror = (event) => event.preventDefault()
+          tx.onerror = (event) => {
+            // Cancel the default action so unhandled errors do not bubble to window.
+            event.preventDefault()
+            requestError =
+              (event.target as IDBRequest | null)?.error ??
+              tx.error ??
+              new Error('IndexedDB transaction failed')
+            try {
+              tx.abort()
+            } catch {
+              // Transaction may already be aborting or aborted.
+            }
+          }
           tx.onabort = () =>
-            reject(tx.error ?? new Error('IndexedDB transaction aborted'))
+            reject(
+              requestError ??
+                tx.error ??
+                new Error('IndexedDB transaction aborted'),
+            )
           try {
             schedule(tx.objectStore(records), (value) => {
               result = value
             })
           } catch (error) {
-            tx.abort()
+            try {
+              tx.abort()
+            } catch {
+              // Transaction may already be aborting or aborted.
+            }
             reject(error)
           }
         }),

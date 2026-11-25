@@ -440,3 +440,58 @@ test('deletes are atomic across two handles to the same store', async (t) => {
   assert.equal(await first.has('shared'), false)
   assert.equal(await second.has('shared'), false)
 })
+
+test('rejects writes when the storage engine encounters an error', async (t) => {
+  const { open } = testStore(t)
+  const store = open<string, number>()
+  if (typeof IDBObjectStore !== 'undefined') {
+    const put = IDBObjectStore.prototype.put
+    IDBObjectStore.prototype.put = function (...args) {
+      const request = put.apply(this, args)
+      setTimeout(() => {
+        Object.defineProperty(request, 'error', {
+          value: new DOMException(
+            'The quota has been exceeded.',
+            'QuotaExceededError',
+          ),
+          configurable: true,
+        })
+        request.dispatchEvent(
+          new Event('error', { bubbles: true, cancelable: true }),
+        )
+      }, 0)
+      return request
+    }
+    try {
+      await assert.rejects(store.set('fail', 1), /quota/i)
+    } finally {
+      IDBObjectStore.prototype.put = put
+    }
+  } else {
+    await store.set('pass', 1)
+    assert.equal(await store.get('pass'), 1)
+  }
+})
+
+test('handles external version change by invalidating the store handle', async (t) => {
+  const { open } = testStore(t)
+  const store = open<string, number>()
+  if (typeof indexedDB !== 'undefined') {
+    await store.set('key', 1)
+    const backend: { name?: string } = Reflect.get(store, 'backend')
+    const dbName = backend.name
+    if (dbName) {
+      const higher = await new Promise<IDBDatabase>((resolve, reject) => {
+        const req = indexedDB.open(dbName, 2)
+        req.onsuccess = () => resolve(req.result)
+        req.onerror = () => reject(req.error)
+      })
+      higher.close()
+      await assert.rejects(store.destroy(), /version change/i)
+      await store.close()
+    }
+  } else {
+    await store.set('key', 1)
+    assert.equal(await store.get('key'), 1)
+  }
+})

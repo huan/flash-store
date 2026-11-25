@@ -123,9 +123,11 @@ objects, and `BigInt` cannot be stored. The TypeScript value type `V` is not
 validated against the decoded JSON, so it may not match the runtime value.
 Use JSON-compatible values and validate decoded data when its shape matters.
 
-Async iteration uses a snapshot in encoded key order. Chrome collects the
-matching records inside a single IndexedDB transaction before yielding the
-first result, so its memory use grows with the number of matches.
+Async iteration uses a snapshot in key order. LMDB orders string keys by
+UTF-8 bytes, whereas Chromium IndexedDB orders strings by native UTF-16 code
+units. Chrome collects the matching records inside a single IndexedDB
+transaction before yielding the first result, so its memory use grows with the
+number of matches.
 `forEach` awaits each callback sequentially and stops on the first error,
 rejecting its returned promise. `FlashStoreSync.forEach` remains synchronous.
 

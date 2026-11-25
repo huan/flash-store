@@ -232,6 +232,48 @@ export async function smokeBrowser(directory: string): Promise<void> {
           throw new Error('Aborted transaction error bubbled to window')
         if (await store.has('aborted'))
           throw new Error('Aborted write persisted')
+
+        const putOriginal = IDBObjectStore.prototype.put
+        let quotaWindowErrorFired = false
+        const onQuotaWindowError = () => {
+          quotaWindowErrorFired = true
+        }
+        window.addEventListener('error', onQuotaWindowError)
+        IDBObjectStore.prototype.put = function (...args) {
+          const request = putOriginal.apply(this, args)
+          setTimeout(() => {
+            Object.defineProperty(request, 'error', {
+              value: new DOMException(
+                'The quota has been exceeded.',
+                'QuotaExceededError',
+              ),
+              configurable: true,
+            })
+            request.dispatchEvent(
+              new Event('error', { bubbles: true, cancelable: true }),
+            )
+          }, 0)
+          return request
+        }
+        try {
+          await store.set('quota-fail', 1).then(
+            () => {
+              throw new Error('Failed request reported success')
+            },
+            (error: unknown) => {
+              if (!(error instanceof Error) || !/quota/i.test(error.message))
+                throw error
+            },
+          )
+        } finally {
+          IDBObjectStore.prototype.put = putOriginal
+          window.removeEventListener('error', onQuotaWindowError)
+        }
+        if (quotaWindowErrorFired)
+          throw new Error('Failed request error bubbled to window')
+        if (await store.has('quota-fail'))
+          throw new Error('Failed request write persisted')
+
         await store.destroy()
         const fresh = new api.FlashStore(name)
         const size = await fresh.size
