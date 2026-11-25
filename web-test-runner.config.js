@@ -10,7 +10,7 @@ export default {
   nodeResolve: { exportConditions: ['browser'] },
   coverageConfig: {
     include: ['src/**/*.ts'],
-    exclude: ['src/**/*.test.ts', 'src/test-fixture.ts', 'src/server/**'],
+    exclude: ['src/**/*.test.ts', 'src/test-fixture.ts', 'src/node/**'],
     reportDir: 'coverage/browser',
     reporters: ['lcov', 'html'],
   },

@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type TestContext, test } from 'node:test'
 import { open } from 'lmdb'
-import { FlashStore } from '../src/server/mod.ts'
+import { FlashStore } from '../src/node/mod.ts'
 
 /** Closes the LMDB environment before removing files that Windows keeps locked. */
 function cleanupStore<K extends string | number, V>(

@@ -5,8 +5,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import DefaultStore, { FlashStore, FlashStoreSync, VERSION } from '#test-store'
+import type { StoreBackend } from './store-backend.ts'
 import { testStore } from './test-fixture.ts'
-import type { StoreBackend } from './universal/store-backend.ts'
 
 test('public entry point exports the package API', (t) => {
   assert.equal(DefaultStore, FlashStore)

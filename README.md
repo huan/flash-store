@@ -61,7 +61,7 @@ Import only `'flash-store'`; the build tool picks the build. Tools that use the
 `browser` export condition (and any runtime without a `node` condition, such as
 Cloudflare Workers) resolve it to IndexedDB, while Node.js, Deno, and Bun
 resolve it to LMDB. Applications can force a build with `flash-store/universal`
-(also `flash-store/browser`) or `flash-store/server`; libraries should not. For a page that loads
+(also `flash-store/browser`) or `flash-store/node`; libraries should not. For a page that loads
 modules directly, serve the installed package files and use an HTML import map
 to resolve the entry and its two bare imports:
 
@@ -69,7 +69,7 @@ to resolve the entry and its two bare imports:
 <script type="importmap">
 {
   "imports": {
-    "flash-store/browser": "/node_modules/flash-store/dist/src/universal/mod.js",
+    "flash-store/browser": "/node_modules/flash-store/dist/src/mod.js",
     "brolog": "/node_modules/brolog/dist/esm/src/mod.js"
   }
 }

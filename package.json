@@ -5,25 +5,25 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/src/universal/mod.d.ts",
-      "browser": "./dist/src/universal/mod.js",
-      "node": "./dist/src/server/mod.js",
-      "default": "./dist/src/universal/mod.js"
+      "types": "./dist/src/mod.d.ts",
+      "browser": "./dist/src/mod.js",
+      "node": "./dist/src/node/mod.js",
+      "default": "./dist/src/mod.js"
     },
     "./universal": {
-      "types": "./dist/src/universal/mod.d.ts",
-      "default": "./dist/src/universal/mod.js"
+      "types": "./dist/src/mod.d.ts",
+      "default": "./dist/src/mod.js"
     },
     "./browser": {
-      "types": "./dist/src/universal/mod.d.ts",
-      "default": "./dist/src/universal/mod.js"
+      "types": "./dist/src/mod.d.ts",
+      "default": "./dist/src/mod.js"
     },
-    "./server": {
-      "types": "./dist/src/server/mod.d.ts",
-      "default": "./dist/src/server/mod.js"
+    "./node": {
+      "types": "./dist/src/node/mod.d.ts",
+      "default": "./dist/src/node/mod.js"
     }
   },
-  "types": "./dist/src/universal/mod.d.ts",
+  "types": "./dist/src/mod.d.ts",
   "engines": {
     "node": ">=26",
     "npm": ">=11"
@@ -90,8 +90,8 @@
   },
   "imports": {
     "#test-store": {
-      "browser": "./src/universal/mod.ts",
-      "default": "./src/server/mod.ts"
+      "browser": "./src/mod.ts",
+      "default": "./src/node/mod.ts"
     }
   }
 }

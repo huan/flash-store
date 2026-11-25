@@ -1,5 +1,5 @@
 /**
- * Owns the async Map API, validation, and JSON encoding shared by the server
+ * Owns the async Map API, validation, and JSON encoding shared by the node
  * and universal entries. Its storage backend supplies transactions and snapshots.
  */
 import { log, VERSION } from './config.ts'

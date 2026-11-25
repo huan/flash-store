@@ -12,7 +12,7 @@ import { join, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { parseArgs } from 'node:util'
 import { IF_EXISTS, open } from 'lmdb'
-import { FlashStore, log, VERSION } from '../src/server/mod.ts'
+import { FlashStore, log, VERSION } from '../src/node/mod.ts'
 
 interface Value {
   key: string

@@ -1,8 +1,8 @@
 /**
  * Universal entry: the WinterTC-safe build selected for browsers, Workers, and
  * any runtime without a more specific `exports` condition. It must not import
- * `node:*`, native addons, or `process`; native storage lives in `../server/`.
- * The Map facades share behavior with the server build through the shared core
+ * `node:*`, native addons, or `process`; native storage lives in `./node/`.
+ * The Map facades share behavior with the node build through the shared core
  * and bind to an origin-scoped IndexedDB database here.
  */
 import { FlashStoreCore, type StoreKey } from './flash-store-core.ts'

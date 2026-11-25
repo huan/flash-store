@@ -3,7 +3,7 @@
  * entry points. TypeScript emits the imported manifest during packaging.
  */
 import { log } from 'brolog'
-import manifest from '../../package.json' with { type: 'json' }
+import manifest from '../package.json' with { type: 'json' }
 
 const VERSION = manifest.version
 

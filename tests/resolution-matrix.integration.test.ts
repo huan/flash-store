@@ -2,8 +2,8 @@
  * Pins which build each tool picks when a consumer imports the package root.
  *
  * Why it exists: the package follows the WinterTC-first rule in AGENTS.md. One
- * root specifier must resolve to the `server` build under `node` and to the
- * `universal` build everywhere else. Build tools silently ignore condition keys
+ * root specifier must resolve to the `node/` build under `node` and to the
+ * universal `src/` build everywhere else. Build tools silently ignore condition keys
  * they do not know, so a wrong `exports` map yields the wrong build with no
  * error. This test fails instead.
  *
@@ -23,9 +23,9 @@ import { build } from 'esbuild'
 
 const exec = promisify(execFile)
 
-const UNIVERSAL = 'dist/src/universal/mod.js'
-const SERVER = 'dist/src/server/mod.js'
-const TYPES = 'dist/src/universal/mod.d.ts'
+const UNIVERSAL = 'dist/src/mod.js'
+const SERVER = 'dist/src/node/mod.js'
+const TYPES = 'dist/src/mod.d.ts'
 
 /** The only condition keys every popular build tool agrees on, in lookup order. */
 const ROOT_CONDITIONS = ['types', 'browser', 'node', 'default']
