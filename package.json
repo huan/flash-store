@@ -40,7 +40,7 @@
     "test:pack": "node scripts/pack-test.ts",
     "test:unit:deno": "deno test --no-check --allow-read --allow-write --allow-env --allow-ffi --allow-sys=homedir src/",
     "test:unit:browser": "wtr --config web-test-runner.config.js",
-    "test:integration": "node --test tests/native.integration.test.ts",
+    "test:integration": "node --test \"tests/*.integration.test.ts\"",
     "test:integration:deno": "deno test --no-check --allow-read --allow-write --allow-env --allow-ffi --allow-sys=homedir tests/native.integration.test.ts"
   },
   "repository": {
