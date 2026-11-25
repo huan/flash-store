@@ -1,6 +1,6 @@
 /**
- * Owns the async Map API, validation, and JSON encoding shared by the native
- * and browser entries. Its storage backend supplies transactions and snapshots.
+ * Owns the async Map API, validation, and JSON encoding shared by the node
+ * and web entries. Its storage backend supplies transactions and snapshots.
  */
 import { log, VERSION } from './config.ts'
 import { validateKeySize } from './key-encoding.ts'

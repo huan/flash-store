@@ -4,7 +4,7 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { FlashStore } from '../src/mod.ts'
+import { FlashStore } from '../src/node/mod.ts'
 
 const directory = await mkdtemp(join(tmpdir(), 'flash-store-demo-'))
 const store = new FlashStore<number, string>(directory)

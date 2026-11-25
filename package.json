@@ -1,22 +1,22 @@
 {
   "name": "flash-store",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Persistent Map-like storage for Node.js, Deno, and Chrome.",
   "type": "module",
   "exports": {
     ".": {
-      "browser": {
-        "types": "./dist/src/browser.d.ts",
-        "import": "./dist/src/browser.js",
-        "default": "./dist/src/browser.js"
-      },
       "types": "./dist/src/mod.d.ts",
-      "import": "./dist/src/mod.js"
+      "browser": "./dist/src/mod.js",
+      "node": "./dist/src/node/mod.js",
+      "default": "./dist/src/mod.js"
     },
     "./browser": {
-      "types": "./dist/src/browser.d.ts",
-      "import": "./dist/src/browser.js",
-      "default": "./dist/src/browser.js"
+      "types": "./dist/src/mod.d.ts",
+      "default": "./dist/src/mod.js"
+    },
+    "./node": {
+      "types": "./dist/src/node/mod.d.ts",
+      "default": "./dist/src/node/mod.js"
     }
   },
   "types": "./dist/src/mod.d.ts",
@@ -40,7 +40,7 @@
     "test:pack": "node scripts/pack-test.ts",
     "test:unit:deno": "deno test --no-check --allow-read --allow-write --allow-env --allow-ffi --allow-sys=homedir src/",
     "test:unit:browser": "wtr --config web-test-runner.config.js",
-    "test:integration": "node --test tests/native.integration.test.ts",
+    "test:integration": "node --test \"tests/*.integration.test.ts\"",
     "test:integration:deno": "deno test --no-check --allow-read --allow-write --allow-env --allow-ffi --allow-sys=homedir tests/native.integration.test.ts"
   },
   "repository": {
@@ -86,8 +86,8 @@
   },
   "imports": {
     "#test-store": {
-      "browser": "./src/browser.ts",
-      "default": "./src/mod.ts"
+      "browser": "./src/mod.ts",
+      "default": "./src/node/mod.ts"
     }
   }
 }

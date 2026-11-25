@@ -7,11 +7,14 @@ import { rm } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { parse, resolve } from 'node:path'
 import { IF_EXISTS, open, type RootDatabase } from 'lmdb'
-import { FlashStoreCore, type StoreKey } from './flash-store-core.ts'
+import { FlashStoreCore, type StoreKey } from '../flash-store-core.ts'
+import type { ScanRange, StoreBackend, StoredEntry } from '../store-backend.ts'
 import { encodePrefixEnd } from './key-encoding.ts'
-import type { ScanRange, StoreBackend, StoredEntry } from './store-backend.ts'
 
-export type { IteratorOptions, StoreKey } from './flash-store-core.ts'
+export type {
+  IteratorOptions,
+  StoreKey,
+} from '../flash-store-core.ts'
 
 const operations = channel('flash-store.operation')
 
