@@ -1,5 +1,5 @@
 /**
- * Shares the key-size contract between the universal and node builds. The
+ * Shares the key-size contract between the web and node builds. The
  * limit mirrors LMDB's default so both builds accept and reject the same keys.
  * LMDB-only key encoding lives in `./node/key-encoding.ts`.
  */

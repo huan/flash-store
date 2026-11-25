@@ -3,7 +3,7 @@
  *
  * Why it exists: the package follows the WinterTC-first rule in AGENTS.md. One
  * root specifier must resolve to the `node/` build under `node` and to the
- * universal `src/` build everywhere else. Build tools silently ignore condition keys
+ * web-platform `src/` build everywhere else. Build tools silently ignore condition keys
  * they do not know, so a wrong `exports` map yields the wrong build with no
  * error. This test fails instead.
  *
@@ -23,7 +23,7 @@ import { build } from 'esbuild'
 
 const exec = promisify(execFile)
 
-const UNIVERSAL = 'dist/src/mod.js'
+const WEB = 'dist/src/mod.js'
 const SERVER = 'dist/src/node/mod.js'
 const TYPES = 'dist/src/mod.d.ts'
 
@@ -101,9 +101,9 @@ describe('exports map shape', () => {
 
 describe('bundlers', () => {
   for (const [platform, expected] of [
-    ['browser', UNIVERSAL],
+    ['browser', WEB],
     ['node', SERVER],
-    ['neutral', UNIVERSAL],
+    ['neutral', WEB],
   ] as const) {
     test(`esbuild platform=${platform}`, async () => {
       const { metafile } = await build({

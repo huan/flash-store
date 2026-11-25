@@ -45,13 +45,13 @@ export class IndexedDbBackend implements StoreBackend {
 
   /**
    * Starts opening the database. Operations surface any open failure.
-   * Throws immediately when the runtime has no IndexedDB: the universal build
+   * Throws immediately when the runtime has no IndexedDB: the web build
    * cannot persist there, and failing loudly beats silently losing data.
    */
   constructor(name: string) {
     if (typeof indexedDB === 'undefined')
       throw new Error(
-        'FlashStore: IndexedDB is not available in this runtime, so the universal build cannot persist data. ' +
+        'FlashStore: IndexedDB is not available in this runtime, so the web build cannot persist data. ' +
           "Use a browser, or run on Node.js, Deno, or Bun and import 'flash-store' (or 'flash-store/node').",
       )
     this.name = `flash-store:${name}`

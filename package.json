@@ -10,10 +10,6 @@
       "node": "./dist/src/node/mod.js",
       "default": "./dist/src/mod.js"
     },
-    "./universal": {
-      "types": "./dist/src/mod.d.ts",
-      "default": "./dist/src/mod.js"
-    },
     "./browser": {
       "types": "./dist/src/mod.d.ts",
       "default": "./dist/src/mod.js"

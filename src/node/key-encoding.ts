@@ -1,6 +1,6 @@
 /**
  * Encodes string prefixes into LMDB key bounds. It is node-only because the
- * bound's byte layout is specific to LMDB; the universal build uses IndexedDB
+ * bound's byte layout is specific to LMDB; the web build uses IndexedDB
  * key ranges instead.
  */
 

@@ -1,5 +1,5 @@
 /**
- * Verifies the universal entry fails loudly where it cannot persist. It hides
+ * Verifies the web-platform entry fails loudly where it cannot persist. It hides
  * `indexedDB` instead of depending on the runtime, so the same case runs under
  * Node.js, Deno, and Chromium.
  */

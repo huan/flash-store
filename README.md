@@ -60,8 +60,8 @@ can check protected directories.
 Import only `'flash-store'`; the build tool picks the build. Tools that use the
 `browser` export condition (and any runtime without a `node` condition, such as
 Cloudflare Workers) resolve it to IndexedDB, while Node.js, Deno, and Bun
-resolve it to LMDB. Applications can force a build with `flash-store/universal`
-(also `flash-store/browser`) or `flash-store/node`; libraries should not. For a page that loads
+resolve it to LMDB. Applications can force a build with `flash-store/browser` or
+`flash-store/node`; libraries should not. For a page that loads
 modules directly, serve the installed package files and use an HTML import map
 to resolve the entry and its two bare imports:
 
