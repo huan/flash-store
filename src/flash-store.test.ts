@@ -123,6 +123,28 @@ test('range boundaries, reverse, limits, and Unicode prefixes', async (t) => {
   await assert.rejects(() => store.set('invalid\0key', 1), /Keys/)
 })
 
+test('values range bounds select keys, not values', async (t) => {
+  const { open } = testStore(t)
+  const store = open<number, number>()
+  await store.set(5, 30)
+  await store.set(10, 5)
+  await store.set(15, 3)
+
+  assert.deepEqual(await Array.fromAsync(store.values()), [30, 5, 3])
+  assert.deepEqual(await Array.fromAsync(store.values({ gte: 10 })), [5, 3])
+  assert.deepEqual(await Array.fromAsync(store.values({ lte: 10 })), [30, 5])
+  assert.deepEqual(await Array.fromAsync(store.values({ gt: 10 })), [3])
+  assert.deepEqual(await Array.fromAsync(store.values({ lt: 10 })), [30])
+  assert.deepEqual(
+    await Array.fromAsync(store.values({ gte: 5, lte: 15, reverse: true })),
+    [3, 5, 30],
+  )
+  assert.deepEqual(
+    await Array.fromAsync(store.values({ gte: 6, lte: 14, limit: 1 })),
+    [5],
+  )
+})
+
 test('numeric keys sort naturally and early iteration can close', async (t) => {
   const { open } = testStore(t)
   const store = open<number, string>()
