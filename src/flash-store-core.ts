@@ -61,8 +61,11 @@ function normalizeKey<K extends StoreKey>(key: K): K {
 function validateOptions<K extends StoreKey>(
   options: IteratorOptions<K>,
 ): void {
-  if (options.prefix !== undefined && typeof options.prefix !== 'string') {
-    throw new TypeError('prefix must be a string')
+  if (options.prefix !== undefined) {
+    if (typeof options.prefix !== 'string') {
+      throw new TypeError('prefix must be a string')
+    }
+    validateKey(options.prefix)
   }
   if (
     (options.gt !== undefined && options.gte !== undefined) ||

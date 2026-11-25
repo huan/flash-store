@@ -116,6 +116,10 @@ test('range boundaries, reverse, limits, and Unicode prefixes', async (t) => {
     () => Array.fromAsync(store.keys({ limit: -1 })),
     /limit/,
   )
+  await assert.rejects(
+    () => Array.fromAsync(store.keys({ prefix: 'invalid\0key' })),
+    /Keys/,
+  )
   await assert.rejects(() => store.set('invalid\0key', 1), /Keys/)
 })
 
@@ -318,6 +322,10 @@ test('enforces the encoded key boundary', async (t) => {
   await store.set('after-invalid', 2)
   assert.equal(await store.get('after-invalid'), 2)
   await assert.rejects(store.delete(`${key}x`), /too large/i)
+  await assert.rejects(
+    () => Array.fromAsync(store.keys({ prefix: `${key}x` })),
+    /too large/i,
+  )
 
   // 494 emojis * 4 bytes = 1976 bytes (within 1978 limit)
   const maxEmojiKey = '😀'.repeat(494)

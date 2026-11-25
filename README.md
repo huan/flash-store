@@ -127,7 +127,8 @@ Async iteration uses a snapshot in key order. LMDB orders string keys by
 UTF-8 bytes, whereas Chromium IndexedDB orders strings by native UTF-16 code
 units. Chrome collects the matching records inside a single IndexedDB
 transaction before yielding the first result, so its memory use grows with the
-number of matches.
+number of matches. For large datasets in browser environments, paginate
+queries with `limit` and range bounds.
 `forEach` awaits each callback sequentially and stops on the first error,
 rejecting its returned promise. `FlashStoreSync.forEach` remains synchronous.
 

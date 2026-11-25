@@ -24,7 +24,6 @@ export function encodePrefixEnd(
   // An encoded UTF-8 string ends in an ASCII or continuation byte (none is 255).
   // Advancing the byte keeps the bound within the key limit.
   const last = bytes.length - 1
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
-  view.setUint8(last, view.getUint8(last) + 1)
+  bytes[last] = (bytes[last] ?? 0) + 1
   return bytes
 }
