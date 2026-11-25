@@ -12,6 +12,8 @@ import { IndexedDbBackend } from './indexeddb-backend.ts'
 
 export { log, VERSION } from './config.ts'
 export type { IteratorOptions, StoreKey } from './flash-store-core.ts'
+export { FlashStoreCore } from './flash-store-core.ts'
+export { FlashStoreSyncCore } from './flash-store-sync-core.ts'
 
 /** Persistent Map backed by IndexedDB with JSON-serialized values. */
 export class FlashStore<

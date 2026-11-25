@@ -30,6 +30,7 @@ const excludedSources =
     ? [
         'node/flash-store',
         'node/flash-store-sync',
+        'node/key-encoding',
         'node/mod',
         'store-backend',
         'test-fixture',

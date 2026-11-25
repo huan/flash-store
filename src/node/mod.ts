@@ -6,6 +6,8 @@
 import { FlashStore } from './flash-store.ts'
 
 export { log, VERSION } from '../config.ts'
+export { FlashStoreCore } from '../flash-store-core.ts'
+export { FlashStoreSyncCore } from '../flash-store-sync-core.ts'
 export type { IteratorOptions, StoreKey } from './flash-store.ts'
 export { FlashStore } from './flash-store.ts'
 export { FlashStoreSync } from './flash-store-sync.ts'
