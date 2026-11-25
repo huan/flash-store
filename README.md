@@ -13,13 +13,13 @@
 [![Downloads](http://img.shields.io/npm/dm/flash-store.svg?style=flat-square)](https://npmjs.org/package/flash-store)
 [![node](https://img.shields.io/node/v/flash-store.svg?maxAge=604800)](https://nodejs.org/)
 
-FlashStore is persistent key-value storage with asynchronous and synchronous Map-like APIs, powered by LMDB.
+FlashStore provides persistent key-value storage with asynchronous and synchronous Map-like APIs. It uses LMDB in Node.js and Deno and IndexedDB in Chrome.
 
 ![flash store](https://huan.github.io/flash-store/images/flash-store.png)
 
 ## Requirements
 
-Node.js 26 or newer and npm 11 or newer. The npm package is ESM-only.
+The npm package is ESM-only. For Node.js development use Node.js 26 and npm 11 or newer. For Deno use Deno 2.9.8 or newer with local `node_modules` and permission to load the LMDB native addon. Chrome uses its built-in IndexedDB.
 
 ## Examples
 
@@ -47,6 +47,62 @@ console.log(`key: 1, value: ${await flashStore.get(1)}`)
 await flashStore.close()
 ```
 
+### Deno
+
+Install the package with `deno install --node-modules-dir=auto npm:flash-store`.
+Use `import { FlashStore } from 'npm:flash-store'` and run the program with
+`deno run --node-modules-dir=auto --allow-read --allow-write --allow-env --allow-ffi=./node_modules app.ts`.
+Grant `--allow-sys=homedir` if the program calls `destroy()` so Flash Store
+can check protected directories.
+
+### Chrome
+
+A bundler that uses the `browser` export condition resolves
+`import { FlashStore } from 'flash-store'` to IndexedDB. Use
+`flash-store/browser` to select that entry explicitly. For a page that loads
+modules directly, serve the installed package files and use an HTML import map
+to resolve the entry and its two bare imports:
+
+```html
+<script type="importmap">
+{
+  "imports": {
+    "flash-store/browser": "/node_modules/flash-store/dist/src/browser.js",
+    "brolog": "/node_modules/brolog/dist/esm/src/mod.js"
+  }
+}
+</script>
+```
+
+Serve the referenced JavaScript and the package's `dist/package.json` with
+their JavaScript and JSON content types, respectively.
+
+```js
+import { FlashStore, FlashStoreSync } from 'flash-store/browser'
+
+const store = new FlashStore('app-cache')
+await store.set('theme', 'dark')
+await store.close()
+
+const cache = new FlashStoreSync('app-cache')
+await cache.ready()
+console.log(cache.get('theme'))
+await cache.close()
+```
+
+The constructor takes a database name scoped to the current origin. Its
+operations wait for IndexedDB to open. `destroy()` deletes that named database
+and waits for other connections to release it. Flash Store connections close
+when Chrome requests an upgrade or deletion. A handle closed by that event
+rejects a later `destroy()`. Once you explicitly call `close()`, the handle
+stops receiving database events. A later `destroy()` uses the database name,
+which can refer to a replacement created by another tab. Call `destroy()`
+directly on an open handle when you intend to remove its database.
+
+A synchronous cache sees its own writes and the snapshot restored by `ready()`. If another tab changes
+the database, reopen the cache to read the updated state. Browser data is
+subject to site storage quotas and eviction.
+
 ## API Reference
 
 ### `FlashStore`
@@ -54,8 +110,10 @@ await flashStore.close()
 `FlashStore` provides async `set`, `get`, `has`, `delete`, `clear`, `forEach`,
 and `size`, plus async iteration through `entries`, `keys`, and `values`.
 Keys are finite numbers or strings without null characters; values use JSON
-serialization. Numeric keys sort naturally before strings. LMDB imposes a
-maximum encoded key size. See the [LMDB documentation](https://github.com/kriszyp/lmdb-js#keys).
+serialization. Numeric keys sort naturally before strings. Both backends enforce the default LMDB limit of 1978 encoded bytes per key.
+See the [LMDB documentation](https://github.com/kriszyp/lmdb-js#keys).
+For arbitrary string identifiers in LMDB, encode embedded control characters and
+unpaired UTF-16 surrogates before storing them as keys.
 
 Values are serialized with `JSON.stringify` and read back with `JSON.parse`.
 This is not a lossless round trip for every JavaScript value: for example,
@@ -65,7 +123,12 @@ objects, and `BigInt` cannot be stored. The TypeScript value type `V` is not
 validated against the decoded JSON, so it may not match the runtime value.
 Use JSON-compatible values and validate decoded data when its shape matters.
 
-Async iteration uses a snapshot in LMDB key order, not Map insertion order.
+Async iteration uses a snapshot in key order. LMDB orders string keys by
+UTF-8 bytes, whereas Chromium IndexedDB orders strings by native UTF-16 code
+units. Chrome collects the matching records inside a single IndexedDB
+transaction before yielding the first result, so its memory use grows with the
+number of matches. For large datasets in browser environments, paginate
+queries with `limit` and range bounds.
 `forEach` awaits each callback sequentially and stops on the first error,
 rejecting its returned promise. `FlashStoreSync.forEach` remains synchronous.
 
@@ -76,8 +139,10 @@ last match, so it does not read unrelated entries. `delete` resolves to whether
 a key existed.
 
 `close()` waits for outstanding writes. `destroy()` closes and **deletes the
-entire database directory**, so use a dedicated directory and never a shared
-directory. Both reject on failure.
+entire database directory** under Node.js and Deno, so use a dedicated
+directory. In Chrome it deletes the named IndexedDB database. After a
+successful `destroy()`, another call on the same handle has no effect. Both
+operations reject on failure.
 
 ### `FlashStoreSync`
 
@@ -91,28 +156,36 @@ observe write failures. After a detected write failure, further mutations throw;
 and reopen the store to recover. Mutations queued before the failure is detected
 may remain in the cache without being persisted. `close()` and `destroy()` wait
 for queued writes and close the database even on failure. `destroy()` removes
-the directory only if writes succeeded. Until `ready()` completes, reads and
+the backing store only if writes succeeded. Until `ready()` completes, reads and
 delete return values only reflect the cache loaded so far.
 
 The cache iterates in its current insertion order, but reopening restores
-entries in LMDB key order rather than their original insertion order. Mutations
+entries in storage key order. Mutations
 during restoration may also affect the cache order. The cache holds the values
 supplied to it; after reopening, values reflect the JSON round trip above.
 
 ## Diagnostics
 
-The `flash-store.operation` Node diagnostics channel publishes `{ operation }`
+On Node.js and Deno the `flash-store.operation` diagnostics channel publishes `{ operation }`
 after successful `set`, `delete`, and `clear` operations. Messages contain no
 keys, values, or paths. The existing exported `log` remains available; its
 configured log level determines what application data it logs.
 
 ## Development
 
-Node executes TypeScript directly; `npm test` performs type-checking, Biome
-checks, and Node tests without building. `npm run test:deno` runs the same unit
-tests on Deno. `npm run coverage:node` and `npm run coverage:deno` enforce
-independently measured baselines and generate local reports. `npm run test:pack`
-builds the package and verifies it in an isolated npm consumer.
+Node executes TypeScript directly. `npm test` runs type checking, Biome, and
+the Node unit tests. The same unit test files run with
+`npm run test:unit:deno` and `npm run test:unit:browser`. Install Chromium for
+the browser suite with `npx playwright install chromium`.
+
+`npm run test:integration` and `npm run test:integration:deno` exercise raw
+LMDB and native diagnostics. `npm run coverage:node`, `npm run coverage:deno`,
+and `npm run coverage:browser` enforce independent line, branch, and function
+floors for each runtime adapter and shared sources. The coverage check fails if
+an executable production file in that scope is absent from the runtime report.
+CI uploads each runtime's LCOV and HTML reports. `npm run test:pack` verifies the installed package in Node,
+Deno, and Chromium and checks consumer type resolution. The Chromium smoke
+test covers both bundled and direct ESM loading.
 
 ### Benchmark
 
@@ -172,7 +245,7 @@ the benchmark CLI, its option validation, and temporary-directory cleanup.
 
 See the [documentation](https://huan.github.io/flash-store).
 
-* [ECMAScript 6: Maps - 2ality – JavaScript and more](http://2ality.com/2015/01/es6-maps-sets.html)
+- [ECMAScript 6: Maps - 2ality – JavaScript and more](http://2ality.com/2015/01/es6-maps-sets.html)
 
 ## Version History
 
@@ -205,6 +278,6 @@ Long answer:
 
 ## Copyright & License
 
-* Code & Docs © 2017-now Huan Li \<huan@chatie.io\>
-* Code released under the Apache-2.0 License
-* Docs released under Creative Commons
+- Code & Docs © 2017-now Huan Li \<huan@chatie.io\>
+- Code released under the Apache-2.0 License
+- Docs released under Creative Commons

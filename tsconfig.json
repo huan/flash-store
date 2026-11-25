@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2025",
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "rootDir": ".",

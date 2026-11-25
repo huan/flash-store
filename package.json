@@ -1,12 +1,22 @@
 {
   "name": "flash-store",
-  "version": "2.0.1",
-  "description": "Persistent Map-like storage backed by LMDB.",
+  "version": "2.1.0",
+  "description": "Persistent Map-like storage for Node.js, Deno, and Chrome.",
   "type": "module",
   "exports": {
     ".": {
+      "browser": {
+        "types": "./dist/src/browser.d.ts",
+        "import": "./dist/src/browser.js",
+        "default": "./dist/src/browser.js"
+      },
       "types": "./dist/src/mod.d.ts",
       "import": "./dist/src/mod.js"
+    },
+    "./browser": {
+      "types": "./dist/src/browser.d.ts",
+      "import": "./dist/src/browser.js",
+      "default": "./dist/src/browser.js"
     }
   },
   "types": "./dist/src/mod.d.ts",
@@ -15,18 +25,23 @@
     "npm": ">=11"
   },
   "scripts": {
-    "build": "tsc && node scripts/prepare-package.ts",
+    "build": "node scripts/prepare-package.ts && tsc",
     "prepack": "npm run build",
     "demo": "node example/demo.ts",
     "benchmark": "node scripts/benchmark.ts",
-    "lint": "biome check src example scripts tsconfig.json package.json biome.json coverage-baselines.json",
+    "lint": "biome check src example scripts tests web-test-runner.config.js tsconfig.json package.json biome.json .github/coverage-baselines",
     "typecheck": "tsc --noEmit",
     "test": "npm run typecheck && npm run lint && npm run test:unit",
-    "test:unit": "node --test src/*.test.ts",
-    "test:deno": "deno test --no-check --allow-read --allow-write --allow-env --allow-ffi --allow-sys=homedir src/",
+    "test:unit": "node --test \"src/**/*.test.ts\"",
+    "test:deno": "npm run test:unit:deno",
     "coverage:node": "node scripts/coverage.ts node",
     "coverage:deno": "node scripts/coverage.ts deno",
-    "test:pack": "node scripts/pack-test.ts"
+    "coverage:browser": "node scripts/coverage.ts browser",
+    "test:pack": "node scripts/pack-test.ts",
+    "test:unit:deno": "deno test --no-check --allow-read --allow-write --allow-env --allow-ffi --allow-sys=homedir src/",
+    "test:unit:browser": "wtr --config web-test-runner.config.js",
+    "test:integration": "node --test tests/native.integration.test.ts",
+    "test:integration:deno": "deno test --no-check --allow-read --allow-write --allow-env --allow-ffi --allow-sys=homedir tests/native.integration.test.ts"
   },
   "repository": {
     "type": "git",
@@ -44,21 +59,35 @@
   },
   "homepage": "https://github.com/huan/flash-store#readme",
   "dependencies": {
-    "brolog": "^1.14.2",
+    "brolog": "^2.0.0",
     "lmdb": "~3.5.9"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.7",
+    "@types/chai": "^5.2.3",
     "@types/node": "^26.6.6",
+    "@web/dev-server-esbuild": "^2.0.1",
+    "@web/test-runner": "^1.0.1",
+    "@web/test-runner-playwright": "^1.0.2",
+    "chai": "^6.3.0",
+    "esbuild": "^0.28.2",
+    "playwright": "^1.61.1",
     "typescript": "^7.0.2"
   },
   "files": [
     "dist/src/",
-    "!dist/src/*.test.*",
+    "!dist/src/**/*.test.*",
+    "!dist/src/**/test-fixture.*",
     "dist/package.json"
   ],
   "publishConfig": {
     "access": "public",
     "tag": "next"
+  },
+  "imports": {
+    "#test-store": {
+      "browser": "./src/browser.ts",
+      "default": "./src/mod.ts"
+    }
   }
 }
