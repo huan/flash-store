@@ -8,8 +8,8 @@ import { homedir, tmpdir } from 'node:os'
 import { parse, resolve } from 'node:path'
 import { IF_EXISTS, open, type RootDatabase } from 'lmdb'
 import { FlashStoreCore, type StoreKey } from '../flash-store-core.ts'
-import { encodePrefixEnd } from '../key-encoding.ts'
 import type { ScanRange, StoreBackend, StoredEntry } from '../store-backend.ts'
+import { encodePrefixEnd } from './key-encoding.ts'
 
 export type {
   IteratorOptions,

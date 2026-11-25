@@ -1,5 +1,7 @@
 /**
- * Shares the default LMDB key-size limit and string prefix bounding for LMDB.
+ * Shares the key-size contract between the universal and node builds. The
+ * limit mirrors LMDB's default so both builds accept and reject the same keys.
+ * LMDB-only key encoding lives in `./node/key-encoding.ts`.
  */
 import type { StoreKey } from './flash-store-core.ts'
 
@@ -13,17 +15,4 @@ export function validateKeySize(key: StoreKey): void {
     if (encoder.encode(key).length > maxKeyBytes)
       throw new RangeError('Key was too large')
   }
-}
-
-/** Returns an exclusive bound for a nonempty encoded string prefix for LMDB. */
-export function encodePrefixEnd(
-  prefix: string,
-): Uint8Array<ArrayBuffer> | undefined {
-  if (prefix === '') return undefined
-  const bytes = encoder.encode(prefix)
-  // An encoded UTF-8 string ends in an ASCII or continuation byte (none is 255).
-  // Advancing the byte keeps the bound within the key limit.
-  const last = bytes.length - 1
-  bytes[last] = (bytes[last] ?? 0) + 1
-  return bytes
 }

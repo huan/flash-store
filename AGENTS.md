@@ -6,6 +6,7 @@
 - The package is ESM-only and needs the Node.js and npm versions in `engines`.
   Node.js runs the `.ts` sources directly; only packaging compiles to `dist/`.
   Relative imports must end in `.ts`;
+- WinterTC-first: libraries import only the package root. `exports["."]` has exactly `types`, `browser`, `node`, `default` (never other keys): `node` (Node.js, Deno, Bun) → `src/node/`; `browser` and `default` → universal code at `src/`, which MUST NOT import `node:*`, native addons, or `process`. Builds share one API and one test suite. Missing capability → throw, never silently degrade. `./universal` and `./node` are application overrides only.
 - Use node:diagnostics_channel for lightweight, privacy-safe internal observability without third-party runtime dependencies. Preserve existing public events and logging; validate diagnostic and tracing channel behavior under both Node.js and Deno before relying on cross-runtime compatibility.
 
 ### Source Code Documentation (AI-First)
