@@ -1,6 +1,6 @@
 {
   "name": "flash-store",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Persistent Map-like storage for Node.js, Deno, and Chrome.",
   "type": "module",
   "exports": {
